@@ -86,7 +86,7 @@ export default function LandingPage() {
             </button>
 
             {/* Desktop navigation */}
-            <nav className="hidden md:flex gap-8">
+            <nav className="hidden md:flex gap-8 items-center">
               <Link href="#overview" className="text-white text-shadow-glow hover:text-purple-300 transition-colors relative group">
                 Overview
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 group-hover:w-full transition-all duration-300"></span>
@@ -102,6 +102,14 @@ export default function LandingPage() {
               <Link href="#tokens" className="text-white text-shadow-glow hover:text-purple-300 transition-colors relative group">
                 Tokens
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 group-hover:w-full transition-all duration-300"></span>
+              </Link>
+              <Link 
+                href="https://discord.gg/aquaprime" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-shadow-glow transition-all duration-300 transform hover:scale-105"
+              >
+                Play Now
               </Link>
             </nav>
           </div>
@@ -120,6 +128,15 @@ export default function LandingPage() {
               </Link>
               <Link href="#tokens" className="block px-4 py-2 text-white hover:bg-purple-800/50 rounded transition-colors" onClick={() => setIsMenuOpen(false)}>
                 Tokens
+              </Link>
+              <Link 
+                href="https://discord.gg/aquaprime" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block mx-4 mt-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-shadow-glow transition-all duration-300 text-center"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Play Now
               </Link>
             </div>
           )}
