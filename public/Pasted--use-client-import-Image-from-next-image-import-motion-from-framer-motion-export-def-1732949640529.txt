@@ -1,0 +1,124 @@
+Listening on ports:
+
+
+:3001 → :3003
+
+:5000 → :3000
+
+:5001 → :3002
+Dev URL:
+https://f92cf095-ab8f-42fd-aa67-0d51acdf2860-00-2dg1mppxq8mh3.spock.replit.dev:3003/
+Dev URLs are temporary and will sleep after you leave the workspace.'use client'
+
+import Image from 'next/image'
+import { motion } from 'framer-motion'
+
+export default function FloatingIslands() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      {/* Background Image with Blur */}
+      <div className="absolute inset-0 filter blur-sm">
+        <Image
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/AquaPrime%20BG-3w9flwAhAJbdbzgtXv0n4v7kJYFjfA.png"
+          alt="Mystical Background"
+          fill
+          className="object-cover"
+          priority
+        />
+      </div>
+
+      {/* Top-left ship */}
+      <motion.div
+        className="absolute top-[10%] left-[5%] w-[200px] h-[200px]"
+        animate={{
+          y: [0, -10, 0],
+          rotate: [0, 1, 0]
+        }}
+        transition={{
+          duration: 6,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 0
+        }}
+      >
+        <Image
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Untitled%20design%20-%202023-08-08T023108.208-ObuUB2up6NCKkfVeOcxJ4f5vewlEh0.png"
+          alt="Floating Island 1"
+          width={200}
+          height={200}
+          className="object-contain"
+        />
+      </motion.div>
+
+      {/* Top-right ship (moved from bottom-left) */}
+      <motion.div
+        className="absolute top-[5%] right-[10%] w-[250px] h-[250px]"
+        animate={{
+          y: [0, -15, 0],
+          rotate: [0, -1, 0]
+        }}
+        transition={{
+          duration: 7,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 1
+        }}
+      >
+        <Image
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/moonstone_maverick.Token784hpIN6ob3eKB1O%20(2)-td4WRtgCnn2Bbjpv3Ia5TckPvZslAp.webp"
+          alt="Floating Island 2"
+          width={250}
+          height={250}
+          className="object-contain"
+        />
+      </motion.div>
+
+      {/* Right-center ship */}
+      <motion.div
+        className="absolute top-[40%] right-[5%] w-[300px] h-[300px]"
+        animate={{
+          y: [0, -20, 0],
+          rotate: [0, 2, 0]
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 2
+        }}
+      >
+        <Image
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Untitled%20design%20-%202024-01-30T011316.580-7vXtj9btXz09vdOAjwHn15TA1rVwdA.png"
+          alt="Floating Island 3"
+          width={300}
+          height={300}
+          className="object-contain"
+        />
+      </motion.div>
+
+      {/* Bottom-right ship */}
+      <motion.div
+        className="absolute bottom-[15%] right-[15%] w-[350px] h-[350px]"
+        animate={{
+          y: [0, -25, 0],
+          rotate: [0, -2, 0]
+        }}
+        transition={{
+          duration: 9,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 3
+        }}
+      >
+        <Image
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Untitled%20design%20-%202024-01-29T032654.542-86hqI1OwGHJKiLKijpgi00nfzEQyLq.png"
+          alt="Floating Island 4"
+          width={350}
+          height={350}
+          className="object-contain"
+        />
+      </motion.div>
+    </div>
+  )
+}
+

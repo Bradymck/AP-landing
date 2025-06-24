@@ -1,0 +1,97 @@
+import { motion } from "framer-motion";
+
+export default function FloatingIslands() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Main islands */}
+      <motion.div
+        className="absolute top-20 -right-20 w-[600px] h-[600px] z-[2]"
+        animate={{
+          y: [0, -20, 0],
+          rotate: [0, 2, 0],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        <img
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Untitled%20design%20-%202023-08-08T023108.208-ObuUB2up6NCKkfVeOcxJ4f5vewlEh0.png"
+          alt="Floating Island"
+          width={250}
+          height={250}
+          className="object-contain"
+        />
+      </motion.div>
+
+      <motion.div
+        className="absolute -bottom-20 -left-20 w-[500px] h-[500px] z-[2]"
+        animate={{
+          y: [0, 20, 0],
+          rotate: [0, -2, 0],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 1,
+        }}
+      >
+        <img
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/moonstone_maverick.Token784hpIN6ob3eKB1O%20(2)-td4WRtgCnn2Bbjpv3Ia5TckPvZslAp.webp"
+          alt="Floating Island"
+          width={500}
+          height={500}
+          className="object-contain"
+        />
+      </motion.div>
+
+      {/* Background island 1 - top-middle */}
+      <motion.div
+        className="absolute top-[12%] left-[30%] w-[180px] h-[180px] opacity-50 z-[1]"
+        animate={{
+          y: [0, -12, 0],
+          rotate: [0, 1.5, 0],
+        }}
+        transition={{
+          duration: 5,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 1.5,
+        }}
+      >
+        <img
+          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Untitled%20design%20-%202024-01-29T032654.542-86hqI1OwGHJKiLKijpgi00nfzEQyLq.png"
+          alt="Background Island 1"
+          width={580}
+          height={580}
+          className="object-contain"
+        />
+      </motion.div>
+
+      {/* Background island 2 - middle-right */}
+      <motion.div
+        className="absolute top-[30%] right-[15%] w-[180px] h-[180px] opacity-60 z-[1]"
+        animate={{
+          y: [0, -15, 0],
+          rotate: [0, -1.5, 0],
+        }}
+        transition={{
+          duration: 6,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 2.5,
+        }}
+      >
+        <img
+          src="AquaPrimeGG/public/Moonstonemaverick.webp"  // Remove '/public/'
+          alt="Background Island 2"
+          width={580}
+          height={580}
+          className="object-contain"
+        />
+      </motion.div>
+    </div>
+  );
+}
