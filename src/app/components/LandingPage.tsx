@@ -104,7 +104,7 @@ export default function LandingPage() {
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 group-hover:w-full transition-all duration-300"></span>
               </Link>
               <Link 
-                href="https://discord.gg/aquaprime" 
+                href="https://www.platypuspassions.com/" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-shadow-glow transition-all duration-300 transform hover:scale-105"
@@ -179,11 +179,11 @@ export default function LandingPage() {
                 asChild
               >
                 <Link 
-                  href="https://sessionsmedia.notion.site/Aqua-Prime-Overview-058105f15f08491c9257ff0150ec16e1"
+                  href="https://www.platypuspassions.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Learn More <ExternalLink className="w-4 h-4 ml-2" />
+                  Play Now <ExternalLink className="w-4 h-4 ml-2" />
                 </Link>
               </Button>
               <Button 
@@ -193,11 +193,11 @@ export default function LandingPage() {
                 asChild
               >
                 <Link 
-                  href="https://streamtide.io/profile/0xa32D872E45A87072B932D85bc23C1A6482b7D312"
+                  href="https://t.me/AquaPrimeRPG"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Support Us <ExternalLink className="w-4 h-4" />
+                  Telegram <ExternalLink className="w-4 h-4" />
                 </Link>
               </Button>
             </div>
