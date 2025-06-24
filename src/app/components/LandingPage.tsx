@@ -492,7 +492,7 @@ export default function LandingPage() {
                     asChild
                   >
                     <Link 
-                      href="https://app.uniswap.org/swap?outputCurrency=0xe03AedE0336c739f90311FE0b08ed03E3690E49a&chain=base"
+                      href="https://app.uniswap.org/swap?outputCurrency=0xDd33A2644D72324fE453036c78296AC90AEd2E2f&chain=base"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
