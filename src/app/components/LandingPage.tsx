@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Gamepad2, ExternalLink, MessageSquare, Code, CuboidIcon as Cube, X } from 'lucide-react'
+import { Gamepad2, ExternalLink, MessageSquare, Code, CuboidIcon as Cube, X, MapPin } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
 const Twitter = dynamic(() => import('lucide-react').then(mod => mod.Twitter), {
@@ -513,6 +513,14 @@ export default function LandingPage() {
                       >
                         <LineChart className="w-4 h-4" /> GeckoTerminal (ARI)
                       </Link>
+                      <Link 
+                        href="https://app.bubblemaps.io/base/token/0xdd33a2644d72324fe453036c78296ac90aed2e2f"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-white hover:text-white"
+                      >
+                        <MapPin className="w-4 h-4" /> Bubble Maps (ARI)
+                      </Link>
                     </div>
                   </div>
                   <Button 
@@ -776,6 +784,16 @@ export default function LandingPage() {
               >
                 <LineChart className="w-6 h-6" />
                 <span className="sr-only">GeckoTerminal</span>
+              </Link>
+              <Link 
+                href="https://app.bubblemaps.io/base/token/0xdd33a2644d72324fe453036c78296ac90aed2e2f" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-purple-300 hover:text-white transition-colors"
+                title="ARI Token on Bubble Maps"
+              >
+                <MapPin className="w-6 h-6" />
+                <span className="sr-only">Bubble Maps</span>
               </Link>
             </div>
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
