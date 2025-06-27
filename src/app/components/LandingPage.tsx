@@ -683,9 +683,10 @@ export default function LandingPage() {
                         🔑 Web3 Infused
                       </h4>
                       <p className="text-blue-200 text-sm mb-2">
-                        Every action is on-chain! Want to cast a spell? That's 0.0001 ETH. 
-                        Want to open a door? Better check your wallet balance first. 
-                        It's like playing D&D but your character sheet costs $50 to update.
+                        True digital ownership, permissionless innovation, and decentralized governance! 
+                        Your character, items, and achievements are actually YOURS - not locked in some company's database. 
+                        Trade, sell, or take your digital assets anywhere. Smart contracts ensure fair play and transparent mechanics.
+                        It's like playing D&D where your character sheet is permanently yours and can level up across multiple universes! 🌐✨
                       </p>
                     </div>
 
