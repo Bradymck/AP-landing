@@ -24,3 +24,51 @@ body {
     -1px 1px 0 rgba(0,0,0,0.5),
     1px 1px 0 rgba(0,0,0,0.5);
 } 
+
+/* Glitch effect for matrix-style text */
+.glitch-text {
+  position: relative;
+}
+
+.glitch-text div {
+  animation: glitch 2s infinite linear alternate-reverse;
+}
+
+.glitch-text div:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.glitch-text div:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes glitch {
+  0% {
+    text-shadow: 0.05em 0 0 #00ffff, -0.05em -0.025em 0 #ff00ff,
+      0.025em 0.05em 0 #ffff00;
+  }
+  15% {
+    text-shadow: 0.05em 0 0 #00ffff, -0.05em -0.025em 0 #ff00ff,
+      0.025em 0.05em 0 #ffff00;
+  }
+  16% {
+    text-shadow: -0.05em -0.025em 0 #00ffff, 0.025em 0.025em 0 #ff00ff,
+      -0.05em -0.05em 0 #ffff00;
+  }
+  49% {
+    text-shadow: -0.05em -0.025em 0 #00ffff, 0.025em 0.025em 0 #ff00ff,
+      -0.05em -0.05em 0 #ffff00;
+  }
+  50% {
+    text-shadow: 0.025em 0.05em 0 #00ffff, 0.05em 0 0 #ff00ff,
+      0 -0.05em 0 #ffff00;
+  }
+  99% {
+    text-shadow: 0.025em 0.05em 0 #00ffff, 0.05em 0 0 #ff00ff,
+      0 -0.05em 0 #ffff00;
+  }
+  100% {
+    text-shadow: -0.025em 0 0 #00ffff, -0.025em -0.025em 0 #ff00ff,
+      -0.025em -0.05em 0 #ffff00;
+  }
+}

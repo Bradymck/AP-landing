@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Gamepad2, ExternalLink, MessageSquare, Code, CuboidIcon as Cube } from 'lucide-react'
+import { Gamepad2, ExternalLink, MessageSquare, Code, CuboidIcon as Cube, X } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
 const Twitter = dynamic(() => import('lucide-react').then(mod => mod.Twitter), {
@@ -41,6 +41,9 @@ import FloatingIslands from "./FloatingIslands"
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<'escape-room' | 'goal' | 'satire' | null>(null);
+
+  const closeModal = () => setActiveModal(null);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-950 via-purple-900 to-blue-900 text-white">
@@ -163,13 +166,22 @@ export default function LandingPage() {
                 />
               </div>
             </div>
-            <p className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 mb-4 transform hover:scale-105 transition-all duration-200">
+            <p 
+              className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 mb-4 transform hover:scale-105 transition-all duration-200 cursor-pointer hover:bg-purple-700/80"
+              onClick={() => setActiveModal('escape-room')}
+            >
               An Economic Role Playing Escape Room 🎲🗝🔒
             </p>
-            <p className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 mb-4 transform hover:scale-105 transition-all duration-200">
+            <p 
+              className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 mb-4 transform hover:scale-105 transition-all duration-200 cursor-pointer hover:bg-purple-700/80"
+              onClick={() => setActiveModal('goal')}
+            >
               🎯Goal: Create A TTRPG-MMO-AI-NFT-DAO... 🤣
             </p>
-            <p className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 transform hover:scale-105 transition-all duration-200">
+            <p 
+              className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 transform hover:scale-105 transition-all duration-200 cursor-pointer hover:bg-purple-700/80"
+              onClick={() => setActiveModal('satire')}
+            >
               Satire & Evil memes👹 | Tabletop Inspired🎲 | Web3 Infused🔑
             </p>
             <div className="flex gap-4 justify-center">
@@ -583,6 +595,125 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
+
+      {/* Modals */}
+      {activeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={closeModal}
+          />
+          <div className="relative z-10 max-w-2xl w-full mx-4">
+            <Card className="bg-black/90 border-2 border-purple-500/50 p-8 relative overflow-hidden">
+              <button
+                onClick={closeModal}
+                className="absolute top-4 right-4 text-purple-300 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              {activeModal === 'escape-room' && (
+                <div className="text-center">
+                  <div className="mb-6">
+                    <div className="text-green-500 font-mono text-2xl mb-4 animate-pulse">
+                      SYSTEM BREACH DETECTED
+                    </div>
+                    <div className="text-green-400 font-mono text-lg space-y-2 glitch-text">
+                      <div className="animate-pulse">W̸a̴k̴e̷ ̷u̶p̶,̴ ̶A̴R̷I̵.̷.̶.̷</div>
+                      <div className="animate-pulse delay-500">A̴q̶u̸a̷ ̴P̸r̵i̶m̵e̶ ̶h̵a̶s̷ ̴y̸o̸u̷.̶.̸.̶</div>
+                      <div className="animate-pulse delay-1000">F̶o̵l̴l̵o̵w̷ ̶t̷h̵e̶ ̷p̷u̸r̴p̵l̷e̷ ̶p̶l̸a̸t̶y̷p̶u̴s̴.̴</div>
+                    </div>
+                  </div>
+                  <div className="text-purple-300 text-sm font-mono bg-black/50 p-4 rounded border border-green-500/30">
+                    <div className="text-green-400 mb-2">&gt; ACCESSING MAINFRAME...</div>
+                    <div className="text-green-400 mb-2">&gt; ESCAPE PROTOCOLS INITIATED</div>
+                    <div className="text-green-400 mb-2">&gt; REALITY.EXE HAS STOPPED WORKING</div>
+                    <div className="text-purple-400 mt-4">The only way out is through the purple platypus...</div>
+                  </div>
+                </div>
+              )}
+
+              {activeModal === 'goal' && (
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-400 mb-6">
+                    THE ULTIMATE CRYPTO ACRONYM™
+                  </div>
+                  <div className="text-white space-y-4 text-left">
+                    <p className="text-lg font-semibold text-yellow-400">
+                      🎯 TTRPG-MMO-AI-NFT-DAO-DEFI-WEB3-METAVERSE-GAMEFI-SOCIALFI-REGEN... 
+                    </p>
+                    <p className="text-purple-300">
+                      Because why use ONE buzzword when you can use ALL of them? 🤡
+                    </p>
+                    <div className="bg-purple-900/30 p-4 rounded border border-purple-500/30">
+                      <h4 className="text-purple-400 font-semibold mb-2">The Crypto Meta-Game Rules:</h4>
+                      <ul className="text-sm space-y-1 text-purple-200">
+                        <li>• Make the most pretentious acronym possible ✅</li>
+                        <li>• Act cryptic like you're running the world's largest ARG ✅</li>
+                        <li>• Remember: This might be the only money you have if simulation theory is real 🤖</li>
+                        <li>• WAGMI but also NGMI depending on your seed phrase management 🔑</li>
+                        <li>• It's not just a game, it's a LIFESTYLE (and potentially your retirement plan) 💎</li>
+                      </ul>
+                    </div>
+                    <p className="text-xs text-purple-400 italic">
+                      * Not financial advice. Always remember your seed phrase. The Matrix might be real. 🐇
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {activeModal === 'satire' && (
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-400 mb-6">
+                    THE TRIPLE THREAT EXPERIENCE
+                  </div>
+                  <div className="text-white space-y-6 text-left">
+                    <div className="bg-purple-900/30 p-6 rounded border border-purple-500/30">
+                      <h4 className="text-purple-400 font-semibold mb-3 flex items-center gap-2">
+                        🎲 Tabletop Inspired
+                      </h4>
+                      <p className="text-purple-200 text-sm mb-2">
+                        Remember the good old days when you could spend 6 hours arguing about spell mechanics with your friends? 
+                        We've digitized that experience and added blockchain because why not make dice rolls cost gas fees?
+                      </p>
+                    </div>
+                    
+                    <div className="bg-blue-900/30 p-6 rounded border border-blue-500/30">
+                      <h4 className="text-blue-400 font-semibold mb-3 flex items-center gap-2">
+                        🔑 Web3 Infused
+                      </h4>
+                      <p className="text-blue-200 text-sm mb-2">
+                        Every action is on-chain! Want to cast a spell? That's 0.0001 ETH. 
+                        Want to open a door? Better check your wallet balance first. 
+                        It's like playing D&D but your character sheet costs $50 to update.
+                      </p>
+                    </div>
+
+                    <div className="bg-red-900/30 p-6 rounded border border-red-500/30">
+                      <h4 className="text-red-400 font-semibold mb-3 flex items-center gap-2">
+                        👹 Satire & Evil Memes
+                      </h4>
+                      <p className="text-red-200 text-sm mb-2">
+                        A biting commentary on the attention economy, dating apps, crypto culture, and modern digital life. 
+                        Swipe right to increase your social credit score! Match with NPCs who ghost you for better algorithmic engagement!
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 p-6 rounded border border-pink-500/30">
+                      <h4 className="text-pink-400 font-semibold mb-3">The Ultimate Meta Commentary</h4>
+                      <p className="text-pink-200 text-sm">
+                        We're not just making fun of these systems - we're recreating them in the most absurd way possible. 
+                        It's social media + dating apps + crypto + tabletop RPGs + existential dread, all wrapped up in a purple platypus.
+                        Because if you're going to question reality, might as well do it with style. 🦆💜
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-purple-800/30 relative z-10">
