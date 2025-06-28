@@ -161,7 +161,7 @@ export default function LandingPage() {
                   alt="Aqua Prime Logo"
                   width={200}
                   height={50}
-                  className="mx-auto relative object-contain"
+                  className="mx-auto relative object-contain w-36 h-9 sm:w-48 sm:h-12 md:w-52 md:h-13"
                   style={{ width: 'auto', height: 'auto' }}
                 />
               </div>
