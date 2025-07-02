@@ -170,19 +170,19 @@ export default function LandingPage() {
               className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 mb-4 transform hover:scale-105 transition-all duration-200 cursor-pointer hover:bg-purple-700/80"
               onClick={() => setActiveModal('escape-room')}
             >
-              An Economic Role Playing Escape Room 🎲🗝🔒
+              🎮 A Game Where You Help Build the World In A Collaborative Storytelling Battle for the Map 🤖 Your AI Sidekicks Help You Win & Hopefully Escape the Simulation
             </p>
             <p 
               className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 mb-4 transform hover:scale-105 transition-all duration-200 cursor-pointer hover:bg-purple-700/80"
               onClick={() => setActiveModal('goal')}
             >
-              🎯Goal: Create A TTRPG-MMO-AI-NFT-DAO... 🤣
+              🎮 A Game Where You Help Build the World In A Collaborative Storytelling Battle for the Map 🤖 Your AI Sidekicks Help You Win & Hopefully Escape the Simulation
             </p>
             <p 
               className="text-lg md:text-xl font-semibold bg-purple-800/80 text-white px-6 py-3 rounded-lg shadow-lg inline-block border-2 border-purple-400/50 transform hover:scale-105 transition-all duration-200 cursor-pointer hover:bg-purple-700/80"
               onClick={() => setActiveModal('satire')}
             >
-              Satire & Evil memes👹 | Tabletop Inspired🎲 | Web3 Infused🔑
+              🎮 A Game Where You Help Build the World In A Collaborative Storytelling Battle for the Map 🤖 Your AI Sidekicks Help You Win & Hopefully Escape the Simulation
             </p>
             <div className="flex gap-4 justify-center">
               <Button 
