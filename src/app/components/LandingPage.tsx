@@ -107,9 +107,9 @@ export default function LandingPage() {
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 group-hover:w-full transition-all duration-300"></span>
               </Link>
               <Link 
-                href="https://www.platypuspassions.com/" 
-                target="_blank"
-                rel="noopener noreferrer"
+                href="#" 
+                
+                
                 className="bg-gray-600 cursor-not-allowed text-gray-300 px-4 py-2 rounded-lg font-semibold opacity-70"
               >
                 Coming Soon
@@ -134,8 +134,8 @@ export default function LandingPage() {
               </Link>
               <Link 
                 href="https://discord.gg/aquaprime" 
-                target="_blank"
-                rel="noopener noreferrer"
+                
+                
                 className="block mx-4 mt-4 bg-gray-600 cursor-not-allowed text-gray-300 px-4 py-2 rounded-lg font-semibold opacity-70 text-center"
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -191,9 +191,9 @@ export default function LandingPage() {
                 asChild
               >
                 <Link 
-                  href="https://www.platypuspassions.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#"
+                  
+                  
                 >
                   Coming Soon <ExternalLink className="w-4 h-4 ml-2" />
                 </Link>
@@ -206,8 +206,8 @@ export default function LandingPage() {
               >
                 <Link 
                   href="https://t.me/AquaPrimeRPG"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  
+                  
                 >
                   Telegram <ExternalLink className="w-4 h-4" />
                 </Link>
@@ -320,7 +320,7 @@ export default function LandingPage() {
                 </p>
                 <div className="bg-black/30 p-6 rounded-lg border border-purple-700/30 space-y-4">
                   <p className="text-white text-shadow-glow">
-                    Based on the <Link href="https://github.com/ai16z/eliza" target="_blank" rel="noopener noreferrer" className="text-white hover:text-blue-300 underline">a16z ELIZA implementation</Link>, 
+                    Based on the <Link href="https://github.com/ai16z/eliza"   className="text-white hover:text-blue-300 underline">a16z ELIZA implementation</Link>, 
                     ARI represents the evolution of conversational AI in gaming - from simple pattern matching to an integral part of our 
                     narrative experience.
                   </p>
@@ -332,8 +332,8 @@ export default function LandingPage() {
                     >
                       <Link 
                         href="https://x.com/SentientARI" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                         
+                        
                         className="flex items-center gap-2"
                       >
                         <Twitter className="w-5 h-5" />
@@ -458,8 +458,8 @@ export default function LandingPage() {
                         <p className="font-mono text-white text-shadow-glow break-all">
                           CA: <Link 
                             href="https://basescan.org/token/0xe03AedE0336c739f90311FE0b08ed03E3690E49a"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            
+                            
                             className="hover:text-white"
                           >
                             0xe03AedE0336c739f90311FE0b08ed03E3690E49a
@@ -471,8 +471,8 @@ export default function LandingPage() {
                         <p className="font-mono text-white text-shadow-glow break-all">
                           CA: <Link 
                             href="https://basescan.org/token/0xDd33A2644D72324fE453036c78296AC90AEd2E2f"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            
+                            
                             className="hover:text-white"
                           >
                             0xDd33A2644D72324fE453036c78296AC90AEd2E2f
@@ -483,40 +483,40 @@ export default function LandingPage() {
                     <div className="flex flex-wrap gap-2">
                       <Link 
                         href="https://dexscreener.com/base/0x4a3ef8a187b83ed465c516c66ae3710e42390258"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        
+                        
                         className="inline-flex items-center gap-1 text-sm text-white hover:text-white"
                       >
                         <BarChart2 className="w-4 h-4" /> DexScreener (MSTN)
                       </Link>
                       <Link 
                         href="https://www.geckoterminal.com/base/pools/0x4a3ef8a187b83ed465c516c66ae3710e42390258"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        
+                        
                         className="inline-flex items-center gap-1 text-sm text-white hover:text-white"
                       >
                         <Activity className="w-4 h-4" /> GeckoTerminal (MSTN)
                       </Link>
                       <Link 
                         href="https://dexscreener.com/base/0xb58782d79eea9ce7a2c5846657a6e8d07abaec65"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        
+                        
                         className="inline-flex items-center gap-1 text-sm text-white hover:text-white"
                       >
                         <TrendingUp className="w-4 h-4" /> DexScreener (ARI)
                       </Link>
                       <Link 
                         href="https://www.geckoterminal.com/base/pools/0xb58782d79eea9ce7a2c5846657a6e8d07abaec65"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        
+                        
                         className="inline-flex items-center gap-1 text-sm text-white hover:text-white"
                       >
                         <LineChart className="w-4 h-4" /> GeckoTerminal (ARI)
                       </Link>
                       <Link 
                         href="https://app.bubblemaps.io/base/token/0xdd33a2644d72324fe453036c78296ac90aed2e2f"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        
+                        
                         className="inline-flex items-center gap-1 text-sm text-white hover:text-white"
                       >
                         <MapPin className="w-4 h-4" /> Bubble Maps (ARI)
@@ -530,8 +530,8 @@ export default function LandingPage() {
                   >
                     <Link 
                       href="https://app.uniswap.org/swap?outputCurrency=0xDd33A2644D72324fE453036c78296AC90AEd2E2f&chain=base"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      
+                      
                     >
                       Buy $ARI <ExternalLink className="w-4 h-4" />
                     </Link>
@@ -577,8 +577,8 @@ export default function LandingPage() {
                   >
                     <Link 
                       href="https://sessionsmedia.notion.site/Aqua-Prime-Overview-058105f15f08491c9257ff0150ec16e1"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      
+                      
                     >
                       Learn More <ExternalLink className="w-4 h-4 ml-2" />
                     </Link>
@@ -591,8 +591,8 @@ export default function LandingPage() {
                   >
                     <Link 
                       href="https://app.uniswap.org/swap?outputCurrency=0xDd33A2644D72324fE453036c78296AC90AEd2E2f&chain=base"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      
+                      
                     >
                       Buy $ARI <ExternalLink className="w-4 h-4" />
                     </Link>
@@ -731,8 +731,8 @@ export default function LandingPage() {
             <div className="flex justify-center gap-6">
               <Link 
                 href="https://x.com/aquaprimerpg" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                 
+                
                 className="text-purple-300 hover:text-white transition-colors"
               >
                 <Twitter className="w-6 h-6" />
@@ -740,8 +740,8 @@ export default function LandingPage() {
               </Link>
               <Link 
                 href="https://www.twitch.tv/stream_tide" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                 
+                
                 className="text-purple-300 hover:text-white transition-colors"
               >
                 <Twitch className="w-6 h-6" />
@@ -749,8 +749,8 @@ export default function LandingPage() {
               </Link>
               <Link 
                 href="https://discord.com/invite/QPA9TkHUXm" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                 
+                
                 className="text-purple-300 hover:text-white transition-colors"
               >
                 <DiscordLogo className="w-6 h-6" />
@@ -758,8 +758,8 @@ export default function LandingPage() {
               </Link>
               <Link 
                 href="https://t.me/AquaPrimeRPG" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                 
+                
                 className="text-purple-300 hover:text-white transition-colors"
               >
                 <Send className="w-6 h-6" />
@@ -767,8 +767,8 @@ export default function LandingPage() {
               </Link>
               <Link 
                 href="https://dexscreener.com/base/0xb58782d79eea9ce7a2c5846657a6e8d07abaec65" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                 
+                
                 className="text-purple-300 hover:text-white transition-colors"
                 title="ARI Token on DexScreener"
               >
@@ -777,8 +777,8 @@ export default function LandingPage() {
               </Link>
               <Link 
                 href="https://www.geckoterminal.com/base/pools/0xb58782d79eea9ce7a2c5846657a6e8d07abaec65" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                 
+                
                 className="text-purple-300 hover:text-white transition-colors"
                 title="ARI Token on GeckoTerminal"
               >
@@ -787,8 +787,8 @@ export default function LandingPage() {
               </Link>
               <Link 
                 href="https://app.bubblemaps.io/base/token/0xdd33a2644d72324fe453036c78296ac90aed2e2f" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                 
+                
                 className="text-purple-300 hover:text-white transition-colors"
                 title="ARI Token on Bubble Maps"
               >
