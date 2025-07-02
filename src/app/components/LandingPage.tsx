@@ -110,9 +110,9 @@ export default function LandingPage() {
                 href="https://www.platypuspassions.com/" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-shadow-glow transition-all duration-300 transform hover:scale-105"
+                className="bg-gray-600 cursor-not-allowed text-gray-300 px-4 py-2 rounded-lg font-semibold opacity-70"
               >
-                Play Now
+                Coming Soon
               </Link>
             </nav>
           </div>
@@ -136,10 +136,10 @@ export default function LandingPage() {
                 href="https://discord.gg/aquaprime" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block mx-4 mt-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-shadow-glow transition-all duration-300 text-center"
+                className="block mx-4 mt-4 bg-gray-600 cursor-not-allowed text-gray-300 px-4 py-2 rounded-lg font-semibold opacity-70 text-center"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Play Now
+                Coming Soon
               </Link>
             </div>
           )}
@@ -187,7 +187,7 @@ export default function LandingPage() {
             <div className="flex gap-4 justify-center">
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-shadow-glow"
+                className="bg-gray-600 cursor-not-allowed text-gray-300 opacity-70 pointer-events-none"
                 asChild
               >
                 <Link 
@@ -195,7 +195,7 @@ export default function LandingPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Play Now <ExternalLink className="w-4 h-4 ml-2" />
+                  Coming Soon <ExternalLink className="w-4 h-4 ml-2" />
                 </Link>
               </Button>
               <Button 
@@ -327,7 +327,7 @@ export default function LandingPage() {
                   <div className="flex justify-center mt-6">
                     <Button 
                       size="lg" 
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-shadow-glow"
+                      className="bg-gray-600 cursor-not-allowed text-gray-300 opacity-70 pointer-events-none"
                       asChild
                     >
                       <Link 
@@ -572,7 +572,7 @@ export default function LandingPage() {
                 <div className="flex gap-4 justify-center">
                   <Button 
                     size="lg" 
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-shadow-glow transform hover:scale-105 transition-all duration-200"
+                    className="bg-gray-600 cursor-not-allowed text-gray-300 opacity-70 pointer-events-none transform hover:scale-105 transition-all duration-200"
                     asChild
                   >
                     <Link 
