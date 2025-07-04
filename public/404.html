@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - AquaPrime</title>
     <style>
-        /* Embedded Tailwind-like styles for portability */
+        /* Embedded styles for portability */
         * {
             margin: 0;
             padding: 0;
@@ -124,7 +124,7 @@
         
         .game-container {
             width: 100%;
-            max-width: 64rem;
+            max-width: 80rem;
             margin: 0 auto;
         }
         
@@ -166,6 +166,7 @@
             overflow: hidden;
             margin: 0 auto;
             background: #000;
+            max-width: 100%;
         }
         
         .game-canvas {
@@ -193,6 +194,7 @@
             border-radius: 0.5rem;
             cursor: pointer;
             transition: background-color 0.2s;
+            margin: 0.25rem;
         }
         
         .game-button:hover {
@@ -218,6 +220,49 @@
             margin-bottom: 1rem;
         }
         
+        .touch-controls {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .touch-button {
+            width: 50px;
+            height: 50px;
+            background: rgba(59, 130, 246, 0.8);
+            border: 2px solid #67e8f9;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .touch-button:active {
+            background: rgba(59, 130, 246, 1);
+            transform: scale(0.95);
+        }
+        
+        .shoot-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(220, 38, 38, 0.8);
+            border: 2px solid #f87171;
+            border-radius: 50%;
+        }
+        
+        .shoot-button:active {
+            background: rgba(220, 38, 38, 1);
+        }
+        
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -235,6 +280,10 @@
             
             .subtitle {
                 font-size: 1.125rem;
+            }
+            
+            .touch-controls {
+                display: flex;
             }
         }
     </style>
@@ -281,7 +330,7 @@
         <div id="game-content" class="game-container" style="display: none;">
             <div class="game-header">
                 <h2 class="game-title">🎮 Secret Discovered!</h2>
-                <p class="game-subtitle">You found the hidden ACTUAL Megapede game with all features!</p>
+                <p class="game-subtitle">You found the hidden ACTUAL AquaPrime Megapede game!</p>
                 <button class="back-button" onclick="showNotFound()">
                     ← Back to 404
                 </button>
@@ -291,14 +340,22 @@
                 <canvas id="gameCanvas" class="game-canvas" width="800" height="600"></canvas>
                 
                 <div id="game-start-overlay" class="game-overlay">
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #67e8f9; margin-bottom: 0.5rem;">AquaPrime Megapede</div>
+                        <div style="color: #a5f3fc; font-size: 0.9rem;">Level: <span id="level-display">1</span> | Score: <span id="score-display">0</span></div>
+                    </div>
                     <button class="game-button" onclick="startGame()">
                         Start Game
+                    </button>
+                    <button class="game-button" onclick="toggleFullscreen()">
+                        Fullscreen
                     </button>
                 </div>
                 
                 <div id="game-over-overlay" class="game-overlay" style="display: none;">
                     <div class="game-over-text">Game Over!</div>
                     <div class="final-score">Final Score: <span id="final-score">0</span></div>
+                    <div style="color: #a5f3fc; margin-bottom: 1rem;">Level Reached: <span id="final-level">1</span></div>
                     <button class="game-button" onclick="resetGame()">
                         Play Again
                     </button>
@@ -306,8 +363,16 @@
             </div>
             
             <div class="game-controls">
-                <p>Controls: A/D or Arrow Keys to move, Spacebar to shoot</p>
-                <p>Score: <span id="current-score">0</span></p>
+                <p>Desktop: Arrow Keys to move, Spacebar to shoot</p>
+                <p>Mobile: Use touch controls below</p>
+                <p>Power-ups: Plasma shots and energy mode available!</p>
+            </div>
+            
+            <!-- Touch Controls for Mobile -->
+            <div class="touch-controls">
+                <div class="touch-button" onmousedown="handleTouchStart('left')" onmouseup="handleTouchEnd('left')" ontouchstart="handleTouchStart('left')" ontouchend="handleTouchEnd('left')">←</div>
+                <div class="touch-button" onmousedown="handleTouchStart('right')" onmouseup="handleTouchEnd('right')" ontouchstart="handleTouchStart('right')" ontouchend="handleTouchEnd('right')">→</div>
+                <div class="touch-button shoot-button" onmousedown="handleShoot()" ontouchstart="handleShoot()">🔫</div>
             </div>
             
             <div style="text-align: center; margin-top: 1rem;">
@@ -324,23 +389,61 @@
         let gameStarted = false;
         let gameOver = false;
         let score = 0;
+        let level = 1;
         let gameLoop = null;
         
+        // Game constants - responsive sizing
+        let GAME_WIDTH = 800;
+        let GAME_HEIGHT = 600;
+        let SCALE_FACTOR = 1;
+        
         // Game constants
-        const GAME_WIDTH = 800;
-        const GAME_HEIGHT = 600;
-        const PLAYER_SIZE = 20;
-        const BULLET_SIZE = 4;
-        const SEGMENT_SIZE = 15;
-        const MUSHROOM_SIZE = 12;
+        const PLAYER_SIZE = 40;
+        const PLAYER_SPEED = 5;
+        const BULLET_SIZE = 5;
+        const BULLET_SPEED = 10;
+        const SEGMENT_SIZE = 20;
+        const MUSHROOM_SIZE = 20;
+        const SPIDER_SIZE = 20;
+        const SHOOT_COOLDOWN = 200;
+        
+        // Power-up and energy constants
+        const ENERGY_THRESHOLD = 10;
+        const ENERGY_DURATION = 5000;
+        const PLASMA_DURATION = 5000;
+        const POWERUP_SPAWN_INTERVAL = 45000;
+        
+        // Visual effects
+        const GLOW_COLOR = "rgba(0, 255, 255, 0.7)";
+        const EXPLOSION_COLORS = ["#FF5E5E", "#FFD700", "#FF8C00", "#FFA07A", "#FFFF00"];
         
         // Game objects
-        let player = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
+        let player = {
+            x: GAME_WIDTH / 2,
+            y: GAME_HEIGHT - 60,
+            energized: false,
+            energyTimer: 0,
+            killCount: 0,
+            plasmaAmmo: 0,
+            plasmaActive: false,
+            plasmaTimer: 0
+        };
+        
         let bullets = [];
-        let centipede = [];
+        let megapedeChains = [];
         let mushrooms = [];
+        let spiders = [];
+        let particles = [];
+        let powerUps = [];
         let keys = {};
         let lastShoot = 0;
+        let lastPowerUpSpawn = 0;
+        
+        // Touch controls
+        let touchControls = {
+            left: false,
+            right: false
+        };
         
         // Secret click handler
         function handleSecretClick() {
@@ -360,44 +463,110 @@
         function showNotFound() {
             document.getElementById('not-found-content').style.display = 'block';
             document.getElementById('game-content').style.display = 'none';
+            if (gameLoop) {
+                clearInterval(gameLoop);
+                gameLoop = null;
+            }
         }
         
         function showGame() {
             document.getElementById('not-found-content').style.display = 'none';
             document.getElementById('game-content').style.display = 'block';
             initializeGame();
+            setupCanvas();
+        }
+        
+        // Canvas setup and responsive sizing
+        function setupCanvas() {
+            const canvas = document.getElementById('gameCanvas');
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth - 4; // Account for border
+            const containerHeight = window.innerHeight * 0.7; // Max 70% of viewport height
+            
+            // Calculate scale factor to fit container while maintaining aspect ratio
+            const scaleX = containerWidth / GAME_WIDTH;
+            const scaleY = containerHeight / GAME_HEIGHT;
+            SCALE_FACTOR = Math.min(scaleX, scaleY, 1); // Don't upscale beyond original size
+            
+            canvas.style.width = (GAME_WIDTH * SCALE_FACTOR) + 'px';
+            canvas.style.height = (GAME_HEIGHT * SCALE_FACTOR) + 'px';
         }
         
         // Game initialization
         function initializeGame() {
-            // Reset game state
-            player = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
+            player = {
+                x: GAME_WIDTH / 2,
+                y: GAME_HEIGHT - 60,
+                energized: false,
+                energyTimer: 0,
+                killCount: 0,
+                plasmaAmmo: 0,
+                plasmaActive: false,
+                plasmaTimer: 0
+            };
+            
             bullets = [];
-            centipede = [];
+            megapedeChains = [];
             mushrooms = [];
+            spiders = [];
+            particles = [];
+            powerUps = [];
             score = 0;
+            level = 1;
             gameStarted = false;
             gameOver = false;
+            lastPowerUpSpawn = 0;
             
-            // Create centipede
-            for (let i = 0; i < 10; i++) {
-                centipede.push({
+            updateScoreDisplay();
+            createMushrooms();
+            createMegapede();
+        }
+        
+        // Create mushrooms
+        function createMushrooms() {
+            const mushroomCount = Math.min(30 + level * 2, 50);
+            for (let i = 0; i < mushroomCount; i++) {
+                const x = Math.random() * (GAME_WIDTH - MUSHROOM_SIZE);
+                const y = 50 + Math.random() * (GAME_HEIGHT * 0.6);
+                
+                mushrooms.push({
+                    x: x,
+                    y: y,
+                    health: 4,
+                    sections: [true, true, true, true] // 4 sections per mushroom
+                });
+            }
+        }
+        
+        // Create megapede
+        function createMegapede() {
+            const segmentCount = Math.min(20 + level, 30);
+            const chain = [];
+            
+            for (let i = 0; i < segmentCount; i++) {
+                chain.push({
                     x: 50 + i * SEGMENT_SIZE,
                     y: 50,
-                    direction: 1
+                    direction: 1,
+                    isHead: i === 0,
+                    isArmored: i % 3 === 0 && i > 0, // Every 3rd segment is armored
+                    armorLevel: 1
                 });
             }
             
-            // Create random mushrooms
-            for (let i = 0; i < 25; i++) {
-                mushrooms.push({
-                    x: Math.random() * (GAME_WIDTH - MUSHROOM_SIZE),
-                    y: Math.random() * (GAME_HEIGHT * 0.7) + 60,
-                    hits: 0
+            megapedeChains = [chain];
+        }
+        
+        // Create spider
+        function createSpider() {
+            if (spiders.length < Math.min(level, 3)) {
+                spiders.push({
+                    x: Math.random() > 0.5 ? 0 : GAME_WIDTH,
+                    y: GAME_HEIGHT * 0.3 + Math.random() * (GAME_HEIGHT * 0.4),
+                    direction: Math.random() > 0.5 ? 1 : -1,
+                    speed: 0.8 + level * 0.1
                 });
             }
-            
-            updateScore();
         }
         
         // Game control functions
@@ -409,6 +578,13 @@
             // Add event listeners
             document.addEventListener('keydown', handleKeyDown);
             document.addEventListener('keyup', handleKeyUp);
+            
+            // Spawn spiders periodically
+            setInterval(() => {
+                if (gameStarted && !gameOver) {
+                    createSpider();
+                }
+            }, 5000 + Math.random() * 10000);
         }
         
         function resetGame() {
@@ -416,6 +592,17 @@
             document.getElementById('game-over-overlay').style.display = 'none';
             initializeGame();
             startGame();
+        }
+        
+        function toggleFullscreen() {
+            const canvas = document.getElementById('gameCanvas');
+            if (!document.fullscreenElement) {
+                canvas.requestFullscreen().catch(err => {
+                    console.log('Fullscreen error:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
         }
         
         // Input handling
@@ -431,28 +618,88 @@
             keys[e.key.toLowerCase()] = false;
         }
         
+        // Touch controls
+        function handleTouchStart(direction) {
+            touchControls[direction] = true;
+        }
+        
+        function handleTouchEnd(direction) {
+            touchControls[direction] = false;
+        }
+        
+        function handleShoot() {
+            shoot();
+        }
+        
         function shoot() {
             const now = Date.now();
-            if (now - lastShoot < 200) return;
+            if (now - lastShoot < SHOOT_COOLDOWN) return;
+            
+            const isPlasma = player.plasmaAmmo > 0;
+            if (isPlasma) player.plasmaAmmo--;
             
             bullets.push({
                 x: player.x,
                 y: player.y,
-                speed: 8
+                speed: isPlasma ? 8 : BULLET_SPEED,
+                isPlasma: isPlasma,
+                size: isPlasma ? 8 : BULLET_SIZE
             });
+            
             lastShoot = now;
         }
         
-        // Game update loop
+        // Collision detection
+        function checkCollision(obj1, obj2, radius1 = obj1.size/2, radius2 = obj2.size/2) {
+            const dx = obj1.x - obj2.x;
+            const dy = obj1.y - obj2.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < (radius1 + radius2);
+        }
+        
+        // Create particles for effects
+        function createParticles(x, y, color, count = 8) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x + (Math.random() - 0.5) * 20,
+                    y: y + (Math.random() - 0.5) * 20,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    color: color,
+                    life: 1.0,
+                    decay: 0.02 + Math.random() * 0.03
+                });
+            }
+        }
+        
+        // Main game update loop
         function updateGame() {
             if (!gameStarted || gameOver) return;
             
+            const now = Date.now();
+            
             // Update player
-            if (keys['arrowleft'] || keys['a']) {
-                player.x = Math.max(PLAYER_SIZE, player.x - 5);
+            if (keys['arrowleft'] || keys['a'] || touchControls.left) {
+                player.x = Math.max(PLAYER_SIZE/2, player.x - PLAYER_SPEED);
             }
-            if (keys['arrowright'] || keys['d']) {
-                player.x = Math.min(GAME_WIDTH - PLAYER_SIZE, player.x + 5);
+            if (keys['arrowright'] || keys['d'] || touchControls.right) {
+                player.x = Math.min(GAME_WIDTH - PLAYER_SIZE/2, player.x + PLAYER_SPEED);
+            }
+            
+            // Update energy state
+            if (player.energized) {
+                player.energyTimer -= 16;
+                if (player.energyTimer <= 0) {
+                    player.energized = false;
+                }
+            }
+            
+            // Update plasma state
+            if (player.plasmaActive) {
+                player.plasmaTimer -= 16;
+                if (player.plasmaTimer <= 0) {
+                    player.plasmaActive = false;
+                }
             }
             
             // Update bullets
@@ -461,53 +708,116 @@
                 return bullet.y > 0;
             });
             
-            // Update centipede
-            centipede.forEach(segment => {
-                segment.x += segment.direction * 2;
-                
-                if (segment.x <= SEGMENT_SIZE || segment.x >= GAME_WIDTH - SEGMENT_SIZE) {
-                    segment.direction *= -1;
-                    segment.y += SEGMENT_SIZE;
+            // Update megapede chains
+            megapedeChains.forEach(chain => {
+                chain.forEach(segment => {
+                    segment.x += segment.direction * (1.0 + level * 0.1);
+                    
+                    if (segment.x <= SEGMENT_SIZE/2 || segment.x >= GAME_WIDTH - SEGMENT_SIZE/2) {
+                        segment.direction *= -1;
+                        segment.y += SEGMENT_SIZE;
+                    }
+                });
+            });
+            
+            // Update spiders
+            spiders.forEach(spider => {
+                spider.x += spider.direction * spider.speed;
+                if (spider.x < -SPIDER_SIZE || spider.x > GAME_WIDTH + SPIDER_SIZE) {
+                    spider.direction *= -1;
+                    spider.y += SPIDER_SIZE;
                 }
+            });
+            
+            // Update particles
+            particles = particles.filter(particle => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.life -= particle.decay;
+                return particle.life > 0;
+            });
+            
+            // Update power-ups
+            if (now - lastPowerUpSpawn > POWERUP_SPAWN_INTERVAL) {
+                powerUps.push({
+                    x: Math.random() * (GAME_WIDTH - 40) + 20,
+                    y: Math.random() * (GAME_HEIGHT * 0.7) + 50,
+                    type: 'plasma',
+                    timeCreated: now,
+                    pulsePhase: 0
+                });
+                lastPowerUpSpawn = now;
+            }
+            
+            powerUps.forEach(powerUp => {
+                powerUp.pulsePhase += 0.1;
             });
             
             // Check collisions
             checkCollisions();
             
-            // Render
+            // Render everything
             render();
             
-            // Check game over
-            if (centipede.some(seg => seg.y > GAME_HEIGHT - 80)) {
+            // Check game over conditions
+            if (megapedeChains.some(chain => chain.some(seg => seg.y > GAME_HEIGHT - 80))) {
                 endGame();
             }
             
-            // Check win condition
-            if (centipede.length === 0) {
-                // Spawn new centipede
-                for (let i = 0; i < Math.min(12, 10 + Math.floor(score / 200)); i++) {
-                    centipede.push({
-                        x: 50 + i * SEGMENT_SIZE,
-                        y: 50,
-                        direction: 1
-                    });
-                }
-                score += 200;
-                updateScore();
+            // Check level completion
+            if (megapedeChains.every(chain => chain.length === 0)) {
+                level++;
+                score += 1000 * level;
+                updateScoreDisplay();
+                createMegapede();
+                createMushrooms();
             }
         }
         
         function checkCollisions() {
-            // Bullet vs Centipede
+            // Bullet vs Megapede
             bullets.forEach((bullet, bIndex) => {
-                centipede.forEach((segment, sIndex) => {
-                    const dx = bullet.x - segment.x;
-                    const dy = bullet.y - segment.y;
-                    if (Math.sqrt(dx * dx + dy * dy) < SEGMENT_SIZE) {
+                megapedeChains.forEach((chain, cIndex) => {
+                    chain.forEach((segment, sIndex) => {
+                        if (checkCollision(bullet, segment)) {
+                            bullets.splice(bIndex, 1);
+                            
+                            if (segment.isArmored) {
+                                segment.armorLevel--;
+                                score += 25;
+                                if (segment.armorLevel <= 0) {
+                                    segment.isArmored = false;
+                                }
+                            } else {
+                                chain.splice(sIndex, 1);
+                                score += segment.isHead ? 150 : 100;
+                                player.killCount++;
+                                
+                                createParticles(segment.x, segment.y, EXPLOSION_COLORS[Math.floor(Math.random() * EXPLOSION_COLORS.length)]);
+                                
+                                if (player.killCount >= ENERGY_THRESHOLD && !player.energized) {
+                                    player.energized = true;
+                                    player.energyTimer = ENERGY_DURATION;
+                                    player.killCount = 0;
+                                }
+                            }
+                            
+                            updateScoreDisplay();
+                        }
+                    });
+                });
+            });
+            
+            // Bullet vs Spider
+            bullets.forEach((bullet, bIndex) => {
+                spiders.forEach((spider, sIndex) => {
+                    if (checkCollision(bullet, spider)) {
                         bullets.splice(bIndex, 1);
-                        centipede.splice(sIndex, 1);
-                        score += 10;
-                        updateScore();
+                        spiders.splice(sIndex, 1);
+                        score += 300;
+                        player.killCount++;
+                        updateScoreDisplay();
+                        createParticles(spider.x, spider.y, '#FFD700');
                     }
                 });
             });
@@ -515,18 +825,64 @@
             // Bullet vs Mushroom
             bullets.forEach((bullet, bIndex) => {
                 mushrooms.forEach((mushroom, mIndex) => {
-                    const dx = bullet.x - mushroom.x;
-                    const dy = bullet.y - mushroom.y;
-                    if (Math.sqrt(dx * dx + dy * dy) < MUSHROOM_SIZE) {
+                    if (checkCollision(bullet, mushroom)) {
                         bullets.splice(bIndex, 1);
-                        mushroom.hits++;
-                        if (mushroom.hits >= 3) {
+                        mushroom.health--;
+                        score += 10;
+                        
+                        if (mushroom.health <= 0) {
                             mushrooms.splice(mIndex, 1);
-                            score += 5;
-                            updateScore();
+                            createParticles(mushroom.x, mushroom.y, '#8B4513');
                         }
+                        
+                        updateScoreDisplay();
                     }
                 });
+            });
+            
+            // Player vs Megapede (when energized)
+            if (player.energized) {
+                megapedeChains.forEach((chain, cIndex) => {
+                    chain.forEach((segment, sIndex) => {
+                        if (checkCollision(player, segment, PLAYER_SIZE/2, SEGMENT_SIZE/2)) {
+                            chain.splice(sIndex, 1);
+                            score += 200;
+                            createParticles(segment.x, segment.y, '#FFD700');
+                            updateScoreDisplay();
+                        }
+                    });
+                });
+            } else {
+                // Player vs Megapede (game over)
+                megapedeChains.forEach(chain => {
+                    chain.forEach(segment => {
+                        if (checkCollision(player, segment, PLAYER_SIZE/2, SEGMENT_SIZE/2)) {
+                            endGame();
+                        }
+                    });
+                });
+            }
+            
+            // Player vs Spider
+            if (!player.energized) {
+                spiders.forEach(spider => {
+                    if (checkCollision(player, spider, PLAYER_SIZE/2, SPIDER_SIZE/2)) {
+                        endGame();
+                    }
+                });
+            }
+            
+            // Player vs Power-up
+            powerUps.forEach((powerUp, pIndex) => {
+                if (checkCollision(player, powerUp, PLAYER_SIZE/2, 15)) {
+                    powerUps.splice(pIndex, 1);
+                    if (powerUp.type === 'plasma') {
+                        player.plasmaAmmo += 10;
+                        player.plasmaActive = true;
+                        player.plasmaTimer = PLASMA_DURATION;
+                    }
+                    createParticles(powerUp.x, powerUp.y, GLOW_COLOR);
+                }
             });
         }
         
@@ -534,37 +890,128 @@
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
             
-            // Clear screen
-            ctx.fillStyle = '#001122';
+            // Clear screen with gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+            gradient.addColorStop(0, '#000033');
+            gradient.addColorStop(0.5, '#000066');
+            gradient.addColorStop(1, '#000033');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
             
-            // Draw player
-            ctx.fillStyle = '#00ff88';
+            // Draw player with glow effect
+            if (player.energized) {
+                ctx.shadowColor = '#FFA500';
+                ctx.shadowBlur = 20;
+            } else {
+                ctx.shadowColor = GLOW_COLOR;
+                ctx.shadowBlur = 15;
+            }
+            
+            ctx.fillStyle = player.energized ? '#FFA500' : '#00ff88';
             ctx.fillRect(player.x - PLAYER_SIZE/2, player.y - PLAYER_SIZE/2, PLAYER_SIZE, PLAYER_SIZE);
+            ctx.shadowBlur = 0;
             
             // Draw bullets
-            ctx.fillStyle = '#ffff44';
             bullets.forEach(bullet => {
-                ctx.fillRect(bullet.x - BULLET_SIZE/2, bullet.y - BULLET_SIZE/2, BULLET_SIZE, BULLET_SIZE);
+                if (bullet.isPlasma) {
+                    ctx.shadowColor = GLOW_COLOR;
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = '#00FFFF';
+                } else {
+                    ctx.fillStyle = '#ffff44';
+                }
+                ctx.fillRect(bullet.x - bullet.size/2, bullet.y - bullet.size/2, bullet.size, bullet.size);
+                ctx.shadowBlur = 0;
             });
             
-            // Draw centipede
-            centipede.forEach((segment, i) => {
-                ctx.fillStyle = i === 0 ? '#ff4444' : '#ff8844';
-                ctx.fillRect(segment.x - SEGMENT_SIZE/2, segment.y - SEGMENT_SIZE/2, SEGMENT_SIZE, SEGMENT_SIZE);
+            // Draw megapede
+            megapedeChains.forEach(chain => {
+                chain.forEach((segment, i) => {
+                    if (segment.isArmored) {
+                        ctx.fillStyle = '#C0C0C0';
+                        ctx.shadowColor = '#FFFFFF';
+                        ctx.shadowBlur = 10;
+                    } else {
+                        ctx.fillStyle = segment.isHead ? '#ff4444' : '#ff8844';
+                    }
+                    ctx.fillRect(segment.x - SEGMENT_SIZE/2, segment.y - SEGMENT_SIZE/2, SEGMENT_SIZE, SEGMENT_SIZE);
+                    ctx.shadowBlur = 0;
+                    
+                    // Draw emoji head for head segments
+                    if (segment.isHead) {
+                        ctx.font = '16px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('👹', segment.x, segment.y + 5);
+                    }
+                });
+            });
+            
+            // Draw spiders
+            ctx.fillStyle = '#800080';
+            spiders.forEach(spider => {
+                ctx.fillRect(spider.x - SPIDER_SIZE/2, spider.y - SPIDER_SIZE/2, SPIDER_SIZE, SPIDER_SIZE);
+                // Draw spider emoji
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🕷️', spider.x, spider.y + 5);
             });
             
             // Draw mushrooms
-            ctx.fillStyle = '#8B4513';
             mushrooms.forEach(mushroom => {
-                ctx.globalAlpha = 1 - mushroom.hits * 0.3;
+                ctx.fillStyle = '#8B4513';
+                ctx.globalAlpha = mushroom.health / 4;
                 ctx.fillRect(mushroom.x - MUSHROOM_SIZE/2, mushroom.y - MUSHROOM_SIZE/2, MUSHROOM_SIZE, MUSHROOM_SIZE);
+                ctx.globalAlpha = 1;
+                
+                // Draw mushroom emoji
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🍄', mushroom.x, mushroom.y + 5);
+            });
+            
+            // Draw power-ups
+            powerUps.forEach(powerUp => {
+                const pulseSize = 15 + Math.sin(powerUp.pulsePhase) * 5;
+                ctx.shadowColor = GLOW_COLOR;
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = '#00FFFF';
+                ctx.fillRect(powerUp.x - pulseSize/2, powerUp.y - pulseSize/2, pulseSize, pulseSize);
+                ctx.shadowBlur = 0;
+                
+                // Draw power-up symbol
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚡', powerUp.x, powerUp.y + 4);
+            });
+            
+            // Draw particles
+            particles.forEach(particle => {
+                ctx.globalAlpha = particle.life;
+                ctx.fillStyle = particle.color;
+                ctx.fillRect(particle.x - 1, particle.y - 1, 2, 2);
             });
             ctx.globalAlpha = 1;
+            
+            // Draw UI elements
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'left';
+            
+            // Energy indicator
+            if (player.energized) {
+                ctx.fillText(`Energy: ${Math.ceil(player.energyTimer / 1000)}s`, 10, 30);
+            }
+            
+            // Plasma indicator
+            if (player.plasmaAmmo > 0) {
+                ctx.fillText(`Plasma: ${player.plasmaAmmo}`, 10, 50);
+            }
         }
         
-        function updateScore() {
-            document.getElementById('current-score').textContent = score;
+        function updateScoreDisplay() {
+            document.getElementById('score-display').textContent = score;
+            document.getElementById('level-display').textContent = level;
         }
         
         function endGame() {
@@ -573,12 +1020,23 @@
             if (gameLoop) clearInterval(gameLoop);
             
             document.getElementById('final-score').textContent = score;
+            document.getElementById('final-level').textContent = level;
             document.getElementById('game-over-overlay').style.display = 'flex';
             
             // Remove event listeners
             document.removeEventListener('keydown', handleKeyDown);
             document.removeEventListener('keyup', handleKeyUp);
         }
+        
+        // Initialize on load
+        window.addEventListener('load', function() {
+            setupCanvas();
+            window.addEventListener('resize', setupCanvas);
+        });
+        
+        // Make touch handlers global
+        window.handleTouchStart = handleTouchStart;
+        window.handleTouchEnd = handleTouchEnd;
     </script>
 </body>
 </html>
