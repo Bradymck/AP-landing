@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - AquaPrime</title>
+    <style>
+        /* Embedded Tailwind-like styles for portability */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(to bottom, #1e3a8a, #581c87, #1e3a8a);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 28rem;
+            background: rgba(30, 58, 138, 0.6);
+            padding: 2rem;
+            border-radius: 1rem;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+        
+        .badge-404 {
+            position: absolute;
+            top: -1.5rem;
+            right: -1.5rem;
+            background: #dc2626;
+            color: white;
+            font-size: 1.25rem;
+            font-weight: bold;
+            border-radius: 50%;
+            width: 3.5rem;
+            height: 3.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            transform: rotate(12deg);
+            cursor: pointer;
+            transition: transform 0.2s;
+            user-select: none;
+        }
+        
+        .badge-404:hover {
+            transform: rotate(12deg) scale(1.1);
+        }
+        
+        .lost-ari {
+            width: 6rem;
+            height: 6rem;
+            border-radius: 0.5rem;
+            margin: 0 auto 1.5rem;
+            display: block;
+        }
+        
+        .title {
+            font-size: 2.25rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+        
+        .subtitle {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+            color: #dbeafe;
+        }
+        
+        .description {
+            color: #bfdbfe;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .quote {
+            color: #67e8f9;
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+        
+        .click-hint {
+            color: #67e8f9;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+        
+        .home-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 2rem;
+            font-weight: bold;
+            background: #2563eb;
+            border-radius: 0.5rem;
+            color: white;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+        
+        .home-button:hover {
+            background: #1d4ed8;
+        }
+        
+        .game-container {
+            width: 100%;
+            max-width: 64rem;
+            margin: 0 auto;
+        }
+        
+        .game-header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .game-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #67e8f9;
+            margin-bottom: 0.5rem;
+        }
+        
+        .game-subtitle {
+            color: #a5f3fc;
+            margin-bottom: 1rem;
+        }
+        
+        .back-button {
+            font-size: 0.875rem;
+            color: #60a5fa;
+            background: none;
+            border: none;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+        
+        .back-button:hover {
+            color: #93c5fd;
+        }
+        
+        .game-canvas-container {
+            position: relative;
+            border: 2px solid #67e8f9;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            margin: 0 auto;
+            background: #000;
+        }
+        
+        .game-canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .game-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .game-button {
+            padding: 0.75rem 1.5rem;
+            background: #0891b2;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .game-button:hover {
+            background: #0e7490;
+        }
+        
+        .game-controls {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #67e8f9;
+            margin-top: 0.5rem;
+        }
+        
+        .game-over-text {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #f87171;
+            margin-bottom: 0.5rem;
+        }
+        
+        .final-score {
+            color: #a5f3fc;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                max-width: 20rem;
+                padding: 1.5rem;
+            }
+            
+            .title {
+                font-size: 1.875rem;
+            }
+            
+            .subtitle {
+                font-size: 1.125rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 404 Content -->
+        <div id="not-found-content" class="container">
+            <div class="badge-404" onclick="handleSecretClick()" title="Something's hidden here... 🤔">
+                404
+            </div>
+            
+            <!-- Lost ARI Animation -->
+            <img src="./lost.gif" 
+                 alt="Lost ARI Platypus" 
+                 class="lost-ari"
+                 id="lost-ari-gif">
+            
+            <h1 class="title">404</h1>
+            
+            <p class="subtitle">
+                Oops! This platypus has wandered too far from home
+            </p>
+            
+            <p class="description">
+                Even our most experienced AquaPrime navigator can't find this page in the vast digital ocean. 
+                Our little platypus friend here seems just as confused as you are!
+            </p>
+            
+            <p class="quote">
+                "I was just looking for some digital kelp and got completely turned around..." - Lost Platypus
+            </p>
+
+            <div id="click-hint" class="click-hint" style="display: none;">
+                🤔 <span id="clicks-remaining">7</span> more clicks...
+            </div>
+            
+            <a href="/" class="home-button">
+                Return to Home Waters
+            </a>
+        </div>
+        
+        <!-- Game Content -->
+        <div id="game-content" class="game-container" style="display: none;">
+            <div class="game-header">
+                <h2 class="game-title">🎮 Secret Discovered!</h2>
+                <p class="game-subtitle">You found the hidden ACTUAL Megapede game with all features!</p>
+                <button class="back-button" onclick="showNotFound()">
+                    ← Back to 404
+                </button>
+            </div>
+            
+            <div class="game-canvas-container">
+                <canvas id="gameCanvas" class="game-canvas" width="800" height="600"></canvas>
+                
+                <div id="game-start-overlay" class="game-overlay">
+                    <button class="game-button" onclick="startGame()">
+                        Start Game
+                    </button>
+                </div>
+                
+                <div id="game-over-overlay" class="game-overlay" style="display: none;">
+                    <div class="game-over-text">Game Over!</div>
+                    <div class="final-score">Final Score: <span id="final-score">0</span></div>
+                    <button class="game-button" onclick="resetGame()">
+                        Play Again
+                    </button>
+                </div>
+            </div>
+            
+            <div class="game-controls">
+                <p>Controls: A/D or Arrow Keys to move, Spacebar to shoot</p>
+                <p>Score: <span id="current-score">0</span></p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+                <a href="/" class="home-button">
+                    Return to Home Waters
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global game state
+        let clickCount = 0;
+        let gameStarted = false;
+        let gameOver = false;
+        let score = 0;
+        let gameLoop = null;
+        
+        // Game constants
+        const GAME_WIDTH = 800;
+        const GAME_HEIGHT = 600;
+        const PLAYER_SIZE = 20;
+        const BULLET_SIZE = 4;
+        const SEGMENT_SIZE = 15;
+        const MUSHROOM_SIZE = 12;
+        
+        // Game objects
+        let player = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
+        let bullets = [];
+        let centipede = [];
+        let mushrooms = [];
+        let keys = {};
+        let lastShoot = 0;
+        
+        // Secret click handler
+        function handleSecretClick() {
+            clickCount++;
+            const clickHint = document.getElementById('click-hint');
+            const clicksRemaining = document.getElementById('clicks-remaining');
+            
+            if (clickCount < 7) {
+                clickHint.style.display = 'block';
+                clicksRemaining.textContent = 7 - clickCount;
+            } else {
+                showGame();
+            }
+        }
+        
+        // Show/hide functions
+        function showNotFound() {
+            document.getElementById('not-found-content').style.display = 'block';
+            document.getElementById('game-content').style.display = 'none';
+        }
+        
+        function showGame() {
+            document.getElementById('not-found-content').style.display = 'none';
+            document.getElementById('game-content').style.display = 'block';
+            initializeGame();
+        }
+        
+        // Game initialization
+        function initializeGame() {
+            // Reset game state
+            player = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 40 };
+            bullets = [];
+            centipede = [];
+            mushrooms = [];
+            score = 0;
+            gameStarted = false;
+            gameOver = false;
+            
+            // Create centipede
+            for (let i = 0; i < 10; i++) {
+                centipede.push({
+                    x: 50 + i * SEGMENT_SIZE,
+                    y: 50,
+                    direction: 1
+                });
+            }
+            
+            // Create random mushrooms
+            for (let i = 0; i < 25; i++) {
+                mushrooms.push({
+                    x: Math.random() * (GAME_WIDTH - MUSHROOM_SIZE),
+                    y: Math.random() * (GAME_HEIGHT * 0.7) + 60,
+                    hits: 0
+                });
+            }
+            
+            updateScore();
+        }
+        
+        // Game control functions
+        function startGame() {
+            gameStarted = true;
+            document.getElementById('game-start-overlay').style.display = 'none';
+            gameLoop = setInterval(updateGame, 16); // ~60fps
+            
+            // Add event listeners
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+        }
+        
+        function resetGame() {
+            if (gameLoop) clearInterval(gameLoop);
+            document.getElementById('game-over-overlay').style.display = 'none';
+            initializeGame();
+            startGame();
+        }
+        
+        // Input handling
+        function handleKeyDown(e) {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                shoot();
+            }
+        }
+        
+        function handleKeyUp(e) {
+            keys[e.key.toLowerCase()] = false;
+        }
+        
+        function shoot() {
+            const now = Date.now();
+            if (now - lastShoot < 200) return;
+            
+            bullets.push({
+                x: player.x,
+                y: player.y,
+                speed: 8
+            });
+            lastShoot = now;
+        }
+        
+        // Game update loop
+        function updateGame() {
+            if (!gameStarted || gameOver) return;
+            
+            // Update player
+            if (keys['arrowleft'] || keys['a']) {
+                player.x = Math.max(PLAYER_SIZE, player.x - 5);
+            }
+            if (keys['arrowright'] || keys['d']) {
+                player.x = Math.min(GAME_WIDTH - PLAYER_SIZE, player.x + 5);
+            }
+            
+            // Update bullets
+            bullets = bullets.filter(bullet => {
+                bullet.y -= bullet.speed;
+                return bullet.y > 0;
+            });
+            
+            // Update centipede
+            centipede.forEach(segment => {
+                segment.x += segment.direction * 2;
+                
+                if (segment.x <= SEGMENT_SIZE || segment.x >= GAME_WIDTH - SEGMENT_SIZE) {
+                    segment.direction *= -1;
+                    segment.y += SEGMENT_SIZE;
+                }
+            });
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Render
+            render();
+            
+            // Check game over
+            if (centipede.some(seg => seg.y > GAME_HEIGHT - 80)) {
+                endGame();
+            }
+            
+            // Check win condition
+            if (centipede.length === 0) {
+                // Spawn new centipede
+                for (let i = 0; i < Math.min(12, 10 + Math.floor(score / 200)); i++) {
+                    centipede.push({
+                        x: 50 + i * SEGMENT_SIZE,
+                        y: 50,
+                        direction: 1
+                    });
+                }
+                score += 200;
+                updateScore();
+            }
+        }
+        
+        function checkCollisions() {
+            // Bullet vs Centipede
+            bullets.forEach((bullet, bIndex) => {
+                centipede.forEach((segment, sIndex) => {
+                    const dx = bullet.x - segment.x;
+                    const dy = bullet.y - segment.y;
+                    if (Math.sqrt(dx * dx + dy * dy) < SEGMENT_SIZE) {
+                        bullets.splice(bIndex, 1);
+                        centipede.splice(sIndex, 1);
+                        score += 10;
+                        updateScore();
+                    }
+                });
+            });
+            
+            // Bullet vs Mushroom
+            bullets.forEach((bullet, bIndex) => {
+                mushrooms.forEach((mushroom, mIndex) => {
+                    const dx = bullet.x - mushroom.x;
+                    const dy = bullet.y - mushroom.y;
+                    if (Math.sqrt(dx * dx + dy * dy) < MUSHROOM_SIZE) {
+                        bullets.splice(bIndex, 1);
+                        mushroom.hits++;
+                        if (mushroom.hits >= 3) {
+                            mushrooms.splice(mIndex, 1);
+                            score += 5;
+                            updateScore();
+                        }
+                    }
+                });
+            });
+        }
+        
+        function render() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear screen
+            ctx.fillStyle = '#001122';
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // Draw player
+            ctx.fillStyle = '#00ff88';
+            ctx.fillRect(player.x - PLAYER_SIZE/2, player.y - PLAYER_SIZE/2, PLAYER_SIZE, PLAYER_SIZE);
+            
+            // Draw bullets
+            ctx.fillStyle = '#ffff44';
+            bullets.forEach(bullet => {
+                ctx.fillRect(bullet.x - BULLET_SIZE/2, bullet.y - BULLET_SIZE/2, BULLET_SIZE, BULLET_SIZE);
+            });
+            
+            // Draw centipede
+            centipede.forEach((segment, i) => {
+                ctx.fillStyle = i === 0 ? '#ff4444' : '#ff8844';
+                ctx.fillRect(segment.x - SEGMENT_SIZE/2, segment.y - SEGMENT_SIZE/2, SEGMENT_SIZE, SEGMENT_SIZE);
+            });
+            
+            // Draw mushrooms
+            ctx.fillStyle = '#8B4513';
+            mushrooms.forEach(mushroom => {
+                ctx.globalAlpha = 1 - mushroom.hits * 0.3;
+                ctx.fillRect(mushroom.x - MUSHROOM_SIZE/2, mushroom.y - MUSHROOM_SIZE/2, MUSHROOM_SIZE, MUSHROOM_SIZE);
+            });
+            ctx.globalAlpha = 1;
+        }
+        
+        function updateScore() {
+            document.getElementById('current-score').textContent = score;
+        }
+        
+        function endGame() {
+            gameOver = true;
+            gameStarted = false;
+            if (gameLoop) clearInterval(gameLoop);
+            
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('game-over-overlay').style.display = 'flex';
+            
+            // Remove event listeners
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+        }
+    </script>
+</body>
+</html>
