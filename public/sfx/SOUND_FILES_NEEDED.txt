@@ -1,0 +1,14 @@
+Sound Effects Needed for Megapede Game:
+
+1. bullet-shoot.wav - Regular bullet firing sound
+2. plasma-shoot.wav - Upgraded/plasma bullet firing sound  
+3. enemy-hit.wav - Sound when bullet hits enemy body/segment
+4. armor-hit.wav - Sound when bullet hits armored enemy (metallic clang)
+5. block-destroy.wav - Sound when mushroom/obstacle block is destroyed
+6. player-death.wav - Sound when player dies/crashes (optional)
+7. power-up.wav - Sound when picking up power-ups (optional)
+8. energy-activate.wav - Sound when player becomes energized (dramatic power-up)
+9. energy-deactivate.wav - Sound when energy mode expires (power-down)
+
+Please add these sound files to the /public/sfx/ folder.
+Supported formats: .wav, .mp3, .ogg

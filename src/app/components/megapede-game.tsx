@@ -2,6 +2,63 @@
 
 import { useEffect, useRef, useState } from "react"
 
+// Sound System
+class SoundManager {
+  private sounds: { [key: string]: HTMLAudioElement } = {}
+  private muted: boolean = false
+
+  constructor() {
+    // Preload all sound effects
+    const soundFiles = [
+      'bullet-shoot.wav',
+      'plasma-shoot.wav', 
+      'enemy-hit.wav',
+      'armor-hit.wav',
+      'block-destroy.wav',
+      'player-death.wav',
+      'power-up.wav',
+      'energy-activate.wav',
+      'energy-deactivate.wav'
+    ]
+
+    soundFiles.forEach(file => {
+      try {
+        const audio = new Audio(`/sfx/${file}`)
+        audio.preload = 'auto'
+        audio.volume = 0.3 // Lower volume for better experience
+        this.sounds[file.replace('.wav', '')] = audio
+      } catch (error) {
+        console.warn(`Could not load sound: ${file}`)
+      }
+    })
+  }
+
+  play(soundName: string) {
+    if (this.muted) return
+    
+    const sound = this.sounds[soundName]
+    if (sound) {
+      try {
+        sound.currentTime = 0 // Reset to beginning
+        sound.play().catch(e => {
+          // Ignore autoplay policy errors
+          console.warn(`Could not play sound: ${soundName}`)
+        })
+      } catch (error) {
+        console.warn(`Error playing sound: ${soundName}`)
+      }
+    }
+  }
+
+  toggleMute() {
+    this.muted = !this.muted
+    return this.muted
+  }
+}
+
+// Global sound manager instance
+let soundManager: SoundManager | null = null
+
 // We'll load the AquaPrime logo directly in the useEffect
 
 // Game constants - base dimensions that will be scaled
@@ -222,13 +279,13 @@ class MegapedeSegment {
         // When armor is depleted, immediately destroy the segment
         this.isArmored = false
         this.isAlive = false
-        return true // Segment is destroyed
+        return { destroyed: true, hitArmor: true } // Segment is destroyed after armor depletion
       }
-      return false // Armor took the hit, segment still alive
+      return { destroyed: false, hitArmor: true } // Armor took the hit, segment still alive
     } else {
       // Unarmored segments die with a single hit
       this.isAlive = false
-      return true // Segment is destroyed
+      return { destroyed: true, hitArmor: false } // Segment is destroyed
     }
   }
 }
@@ -942,6 +999,11 @@ export default function MegapedeGame() {
     setGameStarted(true)
     setGameOver(false)
 
+    // Initialize sound manager if not already created
+    if (!soundManager) {
+      soundManager = new SoundManager()
+    }
+
     // Reset game state
     const state = gameStateRef.current
     state.player = {
@@ -1262,6 +1324,10 @@ export default function MegapedeGame() {
       // Check for energy expiration
       if (state.player.energized && Date.now() > state.player.energyTimer + state.player.energyDuration) {
         state.player.energized = false
+        // Play energy deactivation sound
+        if (soundManager) {
+          soundManager.play('energy-deactivate')
+        }
       }
       
       // Check for plasma expiration
@@ -1273,6 +1339,10 @@ export default function MegapedeGame() {
       if (state.player.energized && Date.now() - state.player.energyTimer > state.player.energyDuration) {
         state.player.energized = false
         state.player.color = "#FF0000"
+        // Play energy deactivation sound
+        if (soundManager) {
+          soundManager.play('energy-deactivate')
+        }
       }
 
       // Shoot bullets - either with auto-shoot or manual shoot
@@ -1294,6 +1364,11 @@ export default function MegapedeGame() {
           isPlasma: isPlasma
         })
         state.lastShootTime = currentTime
+        
+        // Play appropriate shooting sound
+        if (soundManager) {
+          soundManager.play(isPlasma ? 'plasma-shoot' : 'bullet-shoot')
+        }
       }
 
       // Draw power-ups
@@ -1367,6 +1442,11 @@ export default function MegapedeGame() {
                 mushroom.health--
                 createMushroomParticles(mushroom.position, i, mushroom.colorSet)
                 state.score += 1
+                
+                // Play block destroy sound
+                if (soundManager) {
+                  soundManager.play('block-destroy')
+                }
               }
             }
           }
@@ -1411,6 +1491,11 @@ export default function MegapedeGame() {
           if (distance < collisionRadius) {
             // Collect the power-up
             powerUp.active = false
+            
+            // Play power-up sound
+            if (soundManager) {
+              soundManager.play('power-up')
+            }
             
             // Apply power-up effect based on type
             if (powerUp.type === 'plasma') {
@@ -1492,6 +1577,11 @@ export default function MegapedeGame() {
                 if (adjacentSectionIndex !== undefined && mushroom.sections[adjacentSectionIndex]) {
                   mushroom.sections[adjacentSectionIndex] = false
                   mushroom.health--
+                  
+                  // Play block destroy sound
+                  if (soundManager) {
+                    soundManager.play('block-destroy')
+                  }
                   createMushroomParticles(mushroom.position, adjacentSectionIndex, mushroom.colorSet)
                 }
 
@@ -1540,10 +1630,15 @@ export default function MegapedeGame() {
                   state.obstacleGrid.add(key)
 
                   // Use takeDamage instead of direct destruction to respect armor
-                  segment.takeDamage()
+                  const damageResult = segment.takeDamage()
+
+                  // Play appropriate sound effect
+                  if (soundManager) {
+                    soundManager.play(damageResult.hitArmor ? 'armor-hit' : 'enemy-hit')
+                  }
 
                   // If segment had armor, create armor breaking particles
-                  if (segment.isArmored) {
+                  if (damageResult.hitArmor) {
                     // Create armor hit particles
                     for (let i = 0; i < 5; i++) {
                       state.particles.push({
@@ -1581,10 +1676,15 @@ export default function MegapedeGame() {
                 }
                 // Regular body segment handling
                 else {
-                  const wasDestroyed = segment.takeDamage()
+                  const damageResult = segment.takeDamage()
+
+                  // Play appropriate sound effect
+                  if (soundManager) {
+                    soundManager.play(damageResult.hitArmor ? 'armor-hit' : 'enemy-hit')
+                  }
 
                   // Visual feedback for hitting armored segment
-                  if (segment.isArmored && !wasDestroyed) {
+                  if (damageResult.hitArmor && !damageResult.destroyed) {
                     for (let i = 0; i < 5; i++) {
                       state.particles.push({
                         position: {
@@ -1606,7 +1706,7 @@ export default function MegapedeGame() {
                     state.score += 25
                   }
 
-                  if (wasDestroyed) {
+                  if (damageResult.destroyed) {
                     // Create new mushroom where segment was hit
                     const colorSet = EGG_COLORS[Math.floor(Math.random() * EGG_COLORS.length)]
                     const mushroom = {
@@ -1642,6 +1742,11 @@ export default function MegapedeGame() {
                   state.player.energyTimer = Date.now()
                   state.player.killCount = 0
                   state.player.color = "#FF9900" // Orange when energized
+                  
+                  // Play energy activation sound
+                  if (soundManager) {
+                    soundManager.play('energy-activate')
+                  }
                 }
               }
             }
@@ -1907,10 +2012,36 @@ export default function MegapedeGame() {
       })
 
       // Draw player with glow effect
-      // First draw the glow
+      // Enhanced glow effects when energized
       ctx.save()
-      ctx.shadowBlur = PLAYER_GLOW_RADIUS
-      ctx.shadowColor = GLOW_COLOR
+      
+      if (state.player.energized) {
+        // Multiple glow layers for energized mode
+        const pulseIntensity = Math.sin(Date.now() * 0.01) * 0.3 + 0.7 // Pulsing between 0.4 and 1.0
+        
+        // Outer red glow
+        ctx.shadowBlur = PLAYER_GLOW_RADIUS * 2 * pulseIntensity
+        ctx.shadowColor = "#FF0000"
+        ctx.fillStyle = "#FF3333"
+        
+        // Create energized particle trail effect
+        for (let i = 0; i < 3; i++) {
+          const trailX = state.player.position.x + state.player.size / 2 + (Math.random() - 0.5) * state.player.size
+          const trailY = state.player.position.y + state.player.size + Math.random() * 20
+          state.particles.push({
+            position: { x: trailX, y: trailY },
+            velocity: { x: (Math.random() - 0.5) * 2, y: Math.random() * 3 + 1 },
+            size: Math.random() * 3 + 1,
+            color: ["#FF6600", "#FF3300", "#FFAA00"][Math.floor(Math.random() * 3)],
+            lifespan: 300,
+            createdAt: Date.now()
+          })
+        }
+      } else {
+        // Normal glow
+        ctx.shadowBlur = PLAYER_GLOW_RADIUS
+        ctx.shadowColor = GLOW_COLOR
+      }
       
       // Main player shape
       ctx.fillStyle = state.player.energized ? "#FF3333" : state.player.color
@@ -1921,7 +2052,12 @@ export default function MegapedeGame() {
       
       // If image is loaded and not broken, draw it; otherwise fallback to a shape
       if (shipImageRef.current && shipImageRef.current.complete && !shipImageRef.current.src.includes('data:') && shipImageRef.current.naturalWidth > 0) {
-        const size = state.player.size * 1.5 // Make ship slightly larger for better visibility
+        // Enhanced size when energized with pulsing effect
+        let size = state.player.size * 1.5 // Base size increase
+        if (state.player.energized) {
+          const pulse = Math.sin(Date.now() * 0.02) * 0.2 + 1.0 // Pulsing between 0.8 and 1.2
+          size *= pulse
+        }
         ctx.drawImage(
           shipImageRef.current,
           state.player.position.x - size/4,
@@ -2060,7 +2196,11 @@ export default function MegapedeGame() {
         chain.update(GAME_WIDTH, GAME_HEIGHT, state.obstacleGrid)
 
         // Check if any segment reaches bottom or collides with player
-        chain.segments.forEach((segment) => {
+        // Filter to only alive segments to prevent ghost collisions
+        const aliveSegments = chain.segments.filter(segment => segment.isAlive)
+        
+        aliveSegments.forEach((segment) => {
+          // Double-check segment is still alive (defensive programming)
           if (!segment.isAlive) return
 
           // Check collision with player (using circular collision)
@@ -2075,6 +2215,10 @@ export default function MegapedeGame() {
           if (distance < state.player.size / 2 + SEGMENT_SIZE / 2) {
             if (!state.player.energized) {
               state.gameOver = true
+              // Play death sound
+              if (soundManager) {
+                soundManager.play('player-death')
+              }
             } else {
               // When energized, destroy the segment instead
               segment.isAlive = false
@@ -2151,6 +2295,10 @@ export default function MegapedeGame() {
           ) {
             if (!state.player.energized) {
               state.gameOver = true
+              // Play death sound
+              if (soundManager) {
+                soundManager.play('player-death')
+              }
             } else {
               // When energized, destroy the spider instead
               spider.isAlive = false
@@ -2319,18 +2467,51 @@ export default function MegapedeGame() {
   // User needs to manually start the game
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black overflow-hidden" ref={gameContainerRef}>
+    <div className="fixed inset-0 flex flex-col items-center bg-black overflow-hidden" ref={gameContainerRef} style={{justifyContent: isMobile ? 'flex-start' : 'center', paddingTop: isMobile ? '0.5rem' : '0'}}>
       {/* Score and Level Display */}
       {gameStarted && !gameOver && (
         <>
-          {/* Tiny energy indicator in top corner */}
-          <div className="absolute top-1 right-1 z-10">
-            <div 
-              className={`w-2 h-2 rounded-full transition-all duration-200 ${energyPercentage >= 100 ? 'bg-yellow-400' : (plasmaPercent > 0 ? 'bg-blue-400' : 'bg-gray-600')}`} 
-            />
+          {/* Energy Meter - More Visible */}
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
+            <div className="bg-black bg-opacity-70 rounded-lg p-3 border border-cyan-400">
+              <div className="text-center text-cyan-300 text-xs font-bold mb-1">
+                {isEnergized ? 'ENERGIZED!' : 'ENERGY'}
+              </div>
+              
+              {/* Energy Bar Background */}
+              <div className="w-32 h-3 bg-gray-800 rounded-full border border-gray-600 overflow-hidden">
+                {/* Energy Fill */}
+                <div 
+                  className={`h-full transition-all duration-300 ${
+                    isEnergized 
+                      ? 'bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 animate-pulse' 
+                      : energyPercentage >= 100 
+                        ? 'bg-yellow-400 animate-pulse' 
+                        : 'bg-gradient-to-r from-green-500 to-cyan-400'
+                  }`}
+                  style={{ width: `${energyPercentage}%` }}
+                />
+                
+                {/* Energized Overlay Effect */}
+                {isEnergized && (
+                  <div className="absolute inset-0 bg-white bg-opacity-20 animate-ping rounded-full" />
+                )}
+              </div>
+              
+              {/* Status Text */}
+              <div className="text-center text-xs mt-1">
+                {isEnergized 
+                  ? <span className="text-yellow-400 font-bold animate-pulse">{energySeconds}s</span>
+                  : <span className="text-cyan-300">{Math.floor(energyPercentage)}%</span>
+                }
+              </div>
+            </div>
+            
+            {/* Energized Glow Effect */}
+            {isEnergized && (
+              <div className="absolute inset-0 bg-yellow-400 bg-opacity-30 rounded-lg animate-pulse -z-10 blur-sm" />
+            )}
           </div>
-          
-          {/* Tiny energy indicator remains in the top corner */}
         </>
       )}
       
