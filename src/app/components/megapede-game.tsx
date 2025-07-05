@@ -2315,18 +2315,11 @@ export default function MegapedeGame() {
     return () => clearInterval(updateInterval)
   }, [gameStarted])
   
-  // Auto-start game when component mounts
-  useEffect(() => {
-    // Small delay to ensure the component is fully mounted
-    const timer = setTimeout(() => {
-      handleStartGame()
-    }, 200)
-    
-    return () => clearTimeout(timer)
-  }, [])
+  // Don't auto-start game since it's embedded in 404 page
+  // User needs to manually start the game
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center bg-black overflow-auto" ref={gameContainerRef}>
+    <div className="relative w-full flex flex-col items-center bg-black overflow-auto rounded-lg border-2 border-cyan-300 p-4" ref={gameContainerRef}>
       {/* Score and Level Display */}
       {gameStarted && !gameOver && (
         <>
@@ -2365,13 +2358,13 @@ export default function MegapedeGame() {
         </div>
       )}
       
-      <div className="w-full max-w-xl flex justify-center flex-grow-0 mt-4 relative">
+      <div className="w-full max-w-4xl flex justify-center flex-grow-0 mt-4 relative">
         <canvas
           ref={canvasRef}
           width={BASE_GAME_WIDTH}
           height={BASE_GAME_HEIGHT}
-          className="bg-black max-w-full h-auto block object-contain"
-          style={{ maxWidth: '100%', maxHeight: '50vh' }}
+          className="bg-black max-w-full h-auto block object-contain border border-cyan-500"
+          style={{ maxWidth: '100%', height: 'auto' }}
         />
         
         {/* Game Over screen overlay */}
@@ -2395,7 +2388,7 @@ export default function MegapedeGame() {
       
       {/* Mobile Game Controls - Game Boy style below the canvas */}
       {isMobile && gameStarted && !gameOver && (
-        <div className="mt-8 bg-gray-800 p-6 w-full overflow-visible border-t-4 border-gray-900 flex-grow">
+        <div className="mt-4 bg-gray-800 p-4 w-full max-w-4xl overflow-visible border-t-2 border-cyan-500 rounded-b-lg">
           {/* Controls toggle button */}
           <div className="flex justify-center mb-4 relative">
             <button 
