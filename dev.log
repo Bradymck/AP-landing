@@ -1,44 +1,84 @@
+
+> aquaprime-landing@0.1.0 dev
+> next dev --port ${PORT:-3000} --hostname ${HOST:-localhost} --hostname localhost
+
    ▲ Next.js 14.0.4
    - Local:        http://localhost:3000
+   - Network:      http://[::1]:3000
    - Experiments (use at your own risk):
      · outputFileTracingRoot
 
- ✓ Ready in 729ms
- ○ Compiling /not-found ...
+ ✓ Ready in 1034ms
 Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
- ✓ Compiled /not-found in 1465ms (468 modules)
- ✓ Compiled in 174ms (241 modules)
- ○ Compiling / ...
- ✓ Compiled / in 2.7s (3845 modules)
- ✓ Compiled /not-found in 230ms (1924 modules)
- ✓ Compiled in 605ms (3859 modules)
- ✓ Compiled /not-found in 111ms (1924 modules)
- ✓ Compiled in 605ms (3859 modules)
- ✓ Compiled /not-found in 118ms (1924 modules)
- ✓ Compiled in 366ms (3862 modules)
- ✓ Compiled in 397ms (3862 modules)
- ✓ Compiled in 364ms (3862 modules)
- ✓ Compiled in 377ms (3862 modules)
- ✓ Compiled in 309ms (3862 modules)
- ✓ Compiled in 373ms (3862 modules)
- ✓ Compiled in 416ms (3862 modules)
- ✓ Compiled in 301ms (3862 modules)
- ✓ Compiled in 386ms (3862 modules)
- ✓ Compiled in 394ms (3862 modules)
- ✓ Compiled in 388ms (3862 modules)
- ✓ Compiled in 353ms (3862 modules)
- ✓ Compiled in 502ms (3859 modules)
- ✓ Compiled /not-found in 98ms (1924 modules)
- ✓ Compiled in 564ms (3859 modules)
- ✓ Compiled in 404ms (3859 modules)
- ✓ Compiled in 318ms (3859 modules)
- ✓ Compiled in 395ms (3859 modules)
- ✓ Compiled in 307ms (3859 modules)
- ✓ Compiled in 359ms (3859 modules)
- ✓ Compiled in 299ms (3859 modules)
- ✓ Compiled /not-found in 195ms (1924 modules)
- ○ Compiling /_error ...
- ✓ Compiled /_error in 662ms (4007 modules)
-[?25h
+ ○ Compiling /not-found ...
+ ✓ Compiled /not-found in 989ms (468 modules)
+ ✓ Compiled in 143ms (241 modules)
+ ✓ Compiled in 272ms (241 modules)
+ ✓ Compiled /not-found in 130ms (227 modules)
+ ✓ Compiled in 276ms (468 modules)
+ ✓ Compiled in 223ms (468 modules)
+ ✓ Compiled in 189ms (468 modules)
+ ✓ Compiled in 228ms (468 modules)
+ ✓ Compiled in 248ms (468 modules)
+ ✓ Compiled in 280ms (241 modules)
+ ✓ Compiled /not-found in 150ms (227 modules)
+ ⨯ ./src/app/components/megapede-game.tsx
+Error: 
+  [31mx[0m Expected a semicolon
+      ,-[[36;1;4m/Users/bradymckenna/Documents/landing-page/src/app/components/megapede-game.tsx[0m:2737:1]
+ [2m2737[0m |       animationFrameId = requestAnimationFrame(gameLoop)
+ [2m2738[0m |     }
+ [2m2739[0m | 
+ [2m2740[0m |     gameLoop()
+      : [31;1m    ^[0m
+ [2m2741[0m | 
+ [2m2742[0m |     return () => {
+ [2m2743[0m |       cancelAnimationFrame(animationFrameId)
+      `----
+
+  [31mx[0m 'const' declarations must be initialized
+      ,-[[36;1;4m/Users/bradymckenna/Documents/landing-page/src/app/components/megapede-game.tsx[0m:2742:1]
+ [2m2742[0m |     return () => {
+ [2m2743[0m |       cancelAnimationFrame(animationFrameId)
+ [2m2744[0m |     }
+ [2m2745[0m |   }, [gameStarted, score, level, levelIntro])
+      : [31;1m     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+ [2m2746[0m | 
+ [2m2747[0m |   // Function to handle window resizing and responsive canvas
+ [2m2748[0m |   const handleResize = () => {
+      `----
+
+  [31mx[0m Expected a semicolon
+      ,-[[36;1;4m/Users/bradymckenna/Documents/landing-page/src/app/components/megapede-game.tsx[0m:2742:1]
+ [2m2742[0m |     return () => {
+ [2m2743[0m |       cancelAnimationFrame(animationFrameId)
+ [2m2744[0m |     }
+ [2m2745[0m |   }, [gameStarted, score, level, levelIntro])
+      : [31;1m                                            ^[0m
+ [2m2746[0m | 
+ [2m2747[0m |   // Function to handle window resizing and responsive canvas
+ [2m2748[0m |   const handleResize = () => {
+      `----
+
+  [31mx[0m Unexpected eof
+      ,-[[36;1;4m/Users/bradymckenna/Documents/landing-page/src/app/components/megapede-game.tsx[0m:3143:1]
+ [2m3143[0m |       )}
+ [2m3144[0m |     </div>
+ [2m3145[0m |   )
+ [2m3146[0m | }
+      : [31;1m ^[0m
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/components/megapede-game.tsx
+./src/app/not-found.tsx
+ ✓ Compiled in 231ms (468 modules)
+ ✓ Compiled in 273ms (468 modules)
+ ✓ Compiled in 294ms (468 modules)
+ ✓ Compiled in 278ms (468 modules)
+ ✓ Compiled in 348ms (468 modules)

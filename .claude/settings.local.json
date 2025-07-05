@@ -25,7 +25,8 @@
       "Bash(hostname:*)",
       "Bash(echo $HOST)",
       "Bash(unset HOST)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": []
   }

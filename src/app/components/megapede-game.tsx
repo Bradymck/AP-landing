@@ -70,7 +70,7 @@ class SoundManager {
       }
     })
 
-    // Load music tracks
+    // Load music tracks in sequential order (level 1 = boss.mp3, level 2 = drumph.mp3, etc.)
     const musicFiles = ['boss.mp3', 'drumph.mp3', 'epic-groove.mp3', 'epicAF.mp3', 'skiff.mp3', 'steampunk.mp3', 'sofass.mp3']
     musicFiles.forEach(file => {
       try {
@@ -227,12 +227,17 @@ class SoundManager {
     // Wait a moment for audio context to be ready
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    // Get track for this level (cycle through available tracks)
+    // Get track for this level (cycle through available tracks sequentially)
     const trackIndex = (level - 1) % this.musicTracks.length
     this.currentMusic = this.musicTracks[trackIndex]
     this.currentMusicIndex = trackIndex
     
-    console.log(`Attempting to start music track ${trackIndex + 1} for level ${level}`)
+    // Get the music file name for logging
+    const musicFiles = ['boss.mp3', 'drumph.mp3', 'epic-groove.mp3', 'epicAF.mp3', 'skiff.mp3', 'steampunk.mp3', 'sofass.mp3']
+    const currentTrackName = musicFiles[trackIndex] || 'unknown'
+    
+    console.log(`🎵 Level ${level}: Playing track ${trackIndex + 1}/${this.musicTracks.length} - ${currentTrackName}`)
+    console.log(`📀 Music sequence: Level ${level} → Track ${trackIndex + 1} (${currentTrackName})`)
     
     try {
       // Reset and configure the audio
@@ -1523,18 +1528,38 @@ export default function MolochGame() {
     canvas.height = GAME_HEIGHT
 
     const gameLoop = () => {
-      const state = gameStateRef.current
-
-      if (state.gameOver) {
-        setGameOver(true)
-        setGameStarted(false)
-        // Stop background music and bullet loops
-        if (soundManager) {
-          soundManager.stopMusic()
-          soundManager.stopAllBulletLoops()
+      try {
+        const state = gameStateRef.current
+        
+        // Safety check to prevent crashes
+        if (!state || !canvas || !ctx) {
+          console.warn('Game state, canvas, or context is null, skipping frame')
+          animationFrameId = requestAnimationFrame(gameLoop)
+          return
         }
-        return
-      }
+        
+        // Ensure all arrays exist to prevent crashes
+        if (!state.bullets || !state.spiders || !state.molochChains || 
+            !state.particles || !state.powerUps || !state.mushrooms) {
+          console.warn('Game state arrays corrupted, reinitializing')
+          state.bullets = state.bullets || []
+          state.spiders = state.spiders || []
+          state.molochChains = state.molochChains || []
+          state.particles = state.particles || []
+          state.powerUps = state.powerUps || []
+          state.mushrooms = state.mushrooms || []
+        }
+
+        if (state.gameOver) {
+          setGameOver(true)
+          setGameStarted(false)
+          // Stop background music and bullet loops
+          if (soundManager) {
+            soundManager.stopMusic()
+            soundManager.stopAllBulletLoops()
+          }
+          return
+        }
 
       // Create a beautiful animated gradient background
       const bgGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT)
@@ -2710,6 +2735,9 @@ export default function MolochGame() {
       if (state.molochChains.length === 0) {
         state.level++
         setLevel(state.level)
+        CURRENT_GAME_LEVEL = state.level // Keep global level in sync
+        
+        console.log(`🏆 Advancing to Level ${state.level}`)
         
         // Stop all audio so level intro quote can be heard clearly
         if (soundManager) {
@@ -2720,12 +2748,17 @@ export default function MolochGame() {
         startLevelIntro()
       }
 
-      // Update score state
-      if (state.score !== score) {
-        setScore(state.score)
-      }
+        // Update score state
+        if (state.score !== score) {
+          setScore(state.score)
+        }
 
-      animationFrameId = requestAnimationFrame(gameLoop)
+        animationFrameId = requestAnimationFrame(gameLoop)
+      } catch (error) {
+        console.error('Game loop error:', error)
+        // Don't crash the game, just log the error and continue
+        animationFrameId = requestAnimationFrame(gameLoop)
+      }
     }
 
     gameLoop()
@@ -2733,7 +2766,7 @@ export default function MolochGame() {
     return () => {
       cancelAnimationFrame(animationFrameId)
     }
-  }, [gameStarted, score, level, levelIntro])
+  }, [gameStarted]) // Only depend on gameStarted to prevent unnecessary recreations
 
   // Function to handle window resizing and responsive canvas
   const handleResize = () => {
@@ -2791,14 +2824,12 @@ export default function MolochGame() {
     setLevel(1)
     gameStateRef.current.score = 0
     gameStateRef.current.level = 1
-    initGame()
+    CURRENT_GAME_LEVEL = 1 // Ensure global level is reset
     
-    // Start music for level 1 with delay to ensure audio is ready
-    if (soundManager) {
-      setTimeout(() => {
-        soundManager?.startLevelMusic(1)
-      }, 1000) // Longer delay for initial start
-    }
+    console.log(`🎮 Starting game at Level 1`)
+    
+    // Start Level 1 with the same intro as other levels
+    startLevelIntro()
   }
 
   const startLevelIntro = async () => {
@@ -2823,7 +2854,9 @@ export default function MolochGame() {
           // Start level music immediately after game init
           if (soundManager) {
             setTimeout(() => {
-              soundManager?.startLevelMusic(gameStateRef.current.level)
+              const currentLevel = gameStateRef.current.level
+              console.log(`🎵 Starting level intro music for level ${currentLevel}`)
+              soundManager?.startLevelMusic(currentLevel)
             }, 100)
           }
           return 7
