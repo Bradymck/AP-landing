@@ -1,0 +1,2498 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
+
+// We'll load the AquaPrime logo directly in the useEffect
+
+// Game constants - base dimensions that will be scaled
+const BASE_GAME_WIDTH = 800
+const BASE_GAME_HEIGHT = 600
+// Actual dimensions will be set dynamically based on screen size
+let GAME_WIDTH = BASE_GAME_WIDTH
+let GAME_HEIGHT = BASE_GAME_HEIGHT
+// Scale factor for responsive sizing
+let SCALE_FACTOR = 1
+
+// Add touch control types to Window interface
+declare global {
+  interface Window {
+    handleTouchStart: (direction: string) => void;
+    handleTouchEnd: (direction: string) => void;
+  }
+}
+const BORDER_WIDTH = 1
+const BOTTOM_BORDER_WIDTH = 40 // Thicker bottom border to accommodate text
+const PLAYER_SIZE = 40
+const PLAYER_SPEED = 5
+const BULLET_SIZE = 5
+const BULLET_SPEED = 10
+const SHOOT_COOLDOWN = 200 // ms
+const SEGMENT_SIZE = 20
+const MUSHROOM_SIZE = 20
+const SECTION_SIZE = MUSHROOM_SIZE / 4
+const SPIDER_SIZE = 20
+const PARTICLE_COUNT = 8 // Reduced for performance optimization
+
+// Enemy scaling constants
+const BASE_MEGAPEDE_SPEED = 1.0 // Base speed for level 1
+const BASE_SPIDER_SPEED = 0.8 // Base spider speed for level 1
+const SPEED_INCREASE_PER_LEVEL = 0.1 // Speed increases by this amount per level
+const BASE_SEGMENT_COUNT = 20 // Base megapede length for level 1
+const SEGMENTS_INCREASE_LEVEL = 3 // Megapede grows longer every X levels
+
+// Visual enhancement constants
+const GLOW_COLOR = "rgba(0, 255, 255, 0.7)" // Cyan glow for player and bullets
+const PLAYER_GLOW_RADIUS = 45
+const BULLET_GLOW_RADIUS = 10
+const EXPLOSION_COLORS = ["#FF5E5E", "#FFD700", "#FF8C00", "#FFA07A", "#FFFF00"] // Fire colors
+const BG_GRADIENT_COLORS = ["#000033", "#000066", "#000033"] // Deep space blue gradient
+const GRID_SIZE = SEGMENT_SIZE // Using segment size as grid size
+const PARTICLE_SIZE = 1.5 // Smaller particles
+const BASIC_PARTICLE_COUNT = 4 // Basic particles for simple effects
+const BULLET_RADIUS = 6 // Larger hit radius for bullets
+const MUSHROOM_FALL_CHANCE = 0.01 // Chance for a mushroom to start falling each frame
+const MUSHROOM_FALL_SPEED = 1 // Speed at which mushrooms fall
+
+// Egg colors for the mushroom blocks
+const EGG_COLORS = [
+  ["#8B4513", "#A52A2A", "#CD853F", "#D2691E"], // Brown variants
+  ["#6B8E23", "#556B2F", "#808000", "#9ACD32"], // Green variants
+  ["#4682B4", "#5F9EA0", "#6495ED", "#87CEEB"], // Blue variants
+  ["#9370DB", "#8A2BE2", "#9932CC", "#BA55D3"], // Purple variants
+  ["#FF6347", "#FF4500", "#FF7F50", "#FFA07A"], // Red/orange variants
+]
+
+// Emoji heads for megapede
+const EMOJI_HEADS = [
+  "👹",
+]
+
+// Metallic colors for armored segments
+const METALLIC_COLORS = ["#A9A9A9", "#C0C0C0", "#D3D3D3", "#B8B8B8"]
+
+// Global variables to store the current level's emoji and game level
+let CURRENT_LEVEL_EMOJI = "👹" // Default emoji
+let CURRENT_GAME_LEVEL = 1 // Default game level
+
+// Game entities
+interface Vector2 {
+  x: number
+  y: number
+}
+
+// Power-up item type
+type PowerUp = {
+  position: Vector2
+  size: number
+  type: 'plasma'
+  active: boolean
+  timeCreated: number
+  pulsePhase: number // For visual pulsing effect
+}
+
+type Player = {
+  position: Vector2
+  size: number
+  speed: number
+  color: string
+  energized: boolean
+  energyTimer: number
+  killCount: number
+  energyThreshold: number
+  energyDuration: number
+  plasmaAmmo: number
+  plasmaActive: boolean
+  plasmaTimer: number
+  plasmaDuration: number
+}
+
+type Bullet = {
+  position: Vector2
+  size: number
+  speed: number
+  active: boolean
+  isPlasma?: boolean // Flag for enhanced plasma bullets
+}
+
+type Particle = {
+  position: Vector2
+  velocity: Vector2
+  size: number
+  color: string
+  lifespan: number
+  createdAt: number
+}
+
+type Mushroom = {
+  position: Vector2
+  size: number
+  health: number
+  colorSet: string[] // Array of colors for the egg
+  sections: boolean[] // 16 sections (4x4 grid)
+}
+
+class MegapedeSegment {
+  position: Vector2
+  direction: number // +1 = right, -1 = left
+  stepSize: number // in pixels (e.g., tile size)
+  isHead: boolean
+  isAlive = true
+  isArmored = false
+  armorLevel = 0
+  color: string
+  emoji = ""
+  reachedBottom = false
+  size: number // Add size property
+
+  constructor(position: Vector2, direction: number, stepSize: number, isHead: boolean) {
+    this.position = position
+    this.direction = direction
+    this.stepSize = stepSize
+    this.isHead = isHead
+    this.color = isHead ? "#00FF00" : "#00CC00" // Head is brighter green
+    this.size = SEGMENT_SIZE // Initialize with default size
+    // Initialize armor level based on segment type
+    this.armorLevel = isHead ? 3 : 0 // Heads start with 3 armor points
+    
+    // Emoji will be assigned by the chain constructor based on the level's emoji
+  }
+
+  move(gridWidth: number, gridHeight: number, obstacles: Set<string>) {
+        if (!this.isHead || !this.isAlive) return
+
+    // Check if reached bottom
+    if (this.position.y >= gridHeight - BOTTOM_BORDER_WIDTH - this.size * 2) {
+      if (!this.reachedBottom) {
+        this.reachedBottom = true
+        this.isArmored = true
+        this.armorLevel = 6 // Increase to 6 hits to destroy bottom armored
+      }
+      // Reverse vertical direction but keep moving horizontally
+      this.position.y = gridHeight - BOTTOM_BORDER_WIDTH - this.size * 2 // Ensure it doesn't go below bottom
+
+      // Continue moving horizontally at the bottom
+      const nextX = this.position.x + this.direction * this.stepSize
+      const hitsBoundary = nextX < BORDER_WIDTH || nextX >= gridWidth - BORDER_WIDTH - this.size
+
+      if (hitsBoundary) {
+        this.direction *= -1 // Reverse horizontal direction at boundaries
+      } else {
+        this.position.x = nextX // Continue moving horizontally
+      }
+
+      // Occasionally try to move up if at bottom
+      if (Math.random() < 0.05) {
+        this.position.y -= this.stepSize // Try to move up
+      }
+    } else {
+      const nextX = this.position.x + this.direction * this.stepSize
+      const key = `${Math.floor(nextX / GRID_SIZE)},${Math.floor(this.position.y / GRID_SIZE)}`
+      const hitsBoundary = nextX < BORDER_WIDTH || nextX >= gridWidth - BORDER_WIDTH - this.size
+      const hitsObstacle = obstacles.has(key)
+
+      if (hitsBoundary || hitsObstacle) {
+        this.direction *= -1
+
+        // If reached bottom and going back up, move up instead of down when hitting obstacles
+        if (this.reachedBottom) {
+          this.position.y -= this.stepSize
+        } else {
+          this.position.y += this.stepSize
+        }
+      } else {
+        this.position.x = nextX
+      }
+
+      // If reached top after being at bottom, reset reachedBottom flag
+      if (this.reachedBottom && this.position.y <= BORDER_WIDTH + this.size * 2) {
+        this.reachedBottom = false
+        // Remove armor when going back to top if it had been added automatically
+        if (this.isArmored && this.armorLevel <= 6) {
+          this.isArmored = false
+          this.armorLevel = 0
+        }
+      }
+    }
+  }
+
+  takeDamage() {
+    if (this.isArmored) {
+      this.armorLevel -= 1
+      if (this.armorLevel <= 0) {
+        // When armor is depleted, immediately destroy the segment
+        this.isArmored = false
+        this.isAlive = false
+        return true // Segment is destroyed
+      }
+      return false // Armor took the hit, segment still alive
+    } else {
+      // Unarmored segments die with a single hit
+      this.isAlive = false
+      return true // Segment is destroyed
+    }
+  }
+}
+
+class MegapedeChain {
+  segments: MegapedeSegment[]
+  delay: number // time between updates per segment
+  stepSize: number
+  lastUpdateTime: number
+
+  constructor(
+    segmentCount: number,
+    startPosition: Vector2,
+    direction: number,
+    segmentSize: number,
+    speed: number = BASE_MEGAPEDE_SPEED,
+  ) {
+    // Scale speed based on level
+    const level = CURRENT_GAME_LEVEL || 1
+    speed = BASE_MEGAPEDE_SPEED + (level - 1) * SPEED_INCREASE_PER_LEVEL
+    this.stepSize = CURRENT_GAME_LEVEL === 1 ? segmentSize * 0.7 : segmentSize
+    this.segments = []
+    
+    // Adjust delay based on level (longer delay = slower movement at level 1)
+    // At level 1: 70ms, level 2: 50ms, level 3+: 30ms
+    this.delay = Math.max(30, 90 - (level - 1) * 20)
+    this.lastUpdateTime = Date.now()
+    
+    // Use the global level emoji instead of accessing gameStateRef
+    const levelEmoji = CURRENT_LEVEL_EMOJI
+
+    // Create the segments for the chain
+    for (let i = 0; i < segmentCount; i++) {
+      const isHead = i === 0
+      const segmentPos = { ...startPosition }
+
+      // If not the head, position behind the previous segment
+      if (!isHead) {
+        segmentPos.x -= i * segmentSize * direction
+      }
+
+      const segment = new MegapedeSegment(segmentPos, direction, segmentSize, isHead)
+      
+      // Set the emoji for head segments using the level's emoji
+      if (isHead) {
+        segment.emoji = levelEmoji
+      }
+      
+      this.segments.push(segment)
+    }
+  }
+
+  update(gridWidth: number, gridHeight: number, obstacles: Set<string>) {
+    // Only update at certain intervals for smoother movement
+    const now = Date.now()
+    if (now - this.lastUpdateTime < this.delay) return
+    this.lastUpdateTime = now
+
+    // Check if segments array is empty
+    if (this.segments.length === 0) return
+
+    // Move head
+    this.segments[0].move(gridWidth, gridHeight, obstacles)
+
+    // Move body - each segment follows the one in front
+    for (let i = this.segments.length - 1; i > 0; i--) {
+      if (!this.segments[i].isAlive) continue
+
+      // Store previous position of the segment ahead
+      const prevSegment = this.segments[i - 1]
+
+      // Follow the segment ahead
+      this.segments[i].position = { ...prevSegment.position }
+
+      // Check all segments for reach bottom at once
+      for (let j = 0; j < this.segments.length; j++) {
+        if (this.segments[j].position.y >= gridHeight - BOTTOM_BORDER_WIDTH - SEGMENT_SIZE * 2) {
+          // Apply armor to all segments at the bottom
+          for (let k = 0; k < this.segments.length; k++) {
+            if (!this.segments[k].isArmored) {
+              this.segments[k].isArmored = true
+              // Different armor levels for different segment types
+              this.segments[k].armorLevel = this.segments[k].isHead ? 5 : 7 // Heads: 5 hits, Body: 7 hits
+              if (!this.segments[k].isHead) {
+                this.segments[k].color = METALLIC_COLORS[Math.floor(Math.random() * METALLIC_COLORS.length)]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Create a new chain from segments starting at index
+  createNewChainFromSegments(index: number): MegapedeChain | null {
+    if (index <= 0 || index >= this.segments.length) return null
+
+    // Get segments for the new chain
+    const newSegments = this.segments.slice(index)
+
+    // Remove these segments from the current chain
+    this.segments = this.segments.slice(0, index)
+
+    // If no segments left in either chain, return null
+    if (newSegments.length === 0) return null
+    if (this.segments.length === 0) return null
+
+    // Make the first segment of the new chain the head
+    newSegments[0].isHead = true
+    // Assign the current level emoji to the new head using the global variable
+    newSegments[0].emoji = CURRENT_LEVEL_EMOJI
+    // Reverse direction for the new chain
+    newSegments[0].direction *= -1
+
+    // Create a new chain with these segments
+    // Create a new chain with these segments
+    // The speed will be controlled by the global CURRENT_GAME_LEVEL variable
+    const newChain = new MegapedeChain(0, { x: 0, y: 0 }, newSegments[0].direction, this.stepSize)
+    newChain.segments = newSegments
+
+    return newChain
+  }
+
+  splitAt(index: number): MegapedeChain[] {
+    if (index <= 0 || index >= this.segments.length) return [this]
+
+    const leftSegments = this.segments.slice(0, index)
+    const rightSegments = this.segments.slice(index + 1)
+
+    // Make the first segment of the right chain the new head
+    if (rightSegments.length > 0) {
+      rightSegments[0].isHead = true
+      // Assign the current level emoji to the new head using the global variable
+      rightSegments[0].emoji = CURRENT_LEVEL_EMOJI
+    }
+
+    // Create new chains from the segments
+    const chains: MegapedeChain[] = []
+
+    if (leftSegments.length > 0) {
+      const leftChain = new MegapedeChain(0, { x: 0, y: 0 }, 1, this.stepSize)
+      leftChain.segments = leftSegments
+      // Carry over the delay from the parent chain to maintain speed consistency
+      leftChain.delay = this.delay
+      chains.push(leftChain)
+    }
+
+    if (rightSegments.length > 0) {
+      const rightChain = new MegapedeChain(0, { x: 0, y: 0 }, 1, this.stepSize)
+      rightChain.segments = rightSegments
+      // Carry over the delay from the parent chain to maintain speed consistency
+      rightChain.delay = this.delay
+      rightChain.segments = rightSegments
+      chains.push(rightChain)
+    }
+
+    return chains
+  }
+}
+
+class Spider {
+  position: Vector2
+  direction: Vector2
+  speed: number
+  size: number
+  isAlive = true
+  color = "#FF0000" // Red color for spiders
+  targetBlock: Vector2 | null = null
+  targetSection: number | null = null
+  targetSections: number[] = [] // Multiple sections to chew
+  chewingTime = 0
+  chewingDuration = 350 // Faster chewing through sections (was 500ms)
+  isChewing = false
+  lastDirectionChange = 0
+  directionChangeDelay = 1000 // ms between direction changes
+  chaseSpeed = .5 // Moderate speed when chasing (was 0.5)
+  isAtBottom = false // Flag to track if spider is at the bottom
+  aggressiveChaseSpeed = 1.5 // Faster speed when aggressively chasing
+
+  constructor(position: Vector2, speed: number, size: number) {
+    this.position = position
+    this.direction = { x: Math.random() > 0.5 ? 1 : -1, y: 0 } // Start moving horizontally
+    // Apply level-based speed scaling
+    const level = CURRENT_GAME_LEVEL || 1
+    this.speed = speed * (BASE_SPIDER_SPEED + (level - 1) * SPEED_INCREASE_PER_LEVEL)
+    this.size = size
+    this.lastDirectionChange = Date.now()
+  }
+
+  update(bounds: Vector2, obstacles: Set<string>, mushrooms: Mushroom[], playerPosition: Vector2) {
+    // If currently chewing a block
+    if (this.isChewing && this.targetBlock && this.targetSections.length > 0) {
+      this.chewingTime += 16 // Assuming ~60fps
+
+      // If finished chewing
+      if (this.chewingTime >= this.chewingDuration) {
+        this.isChewing = false
+        this.chewingTime = 0
+
+        // Find the mushroom we're chewing
+        const mushroom = mushrooms.find(
+          (m) => m.position.x === this.targetBlock!.x && m.position.y === this.targetBlock!.y,
+        )
+
+        // Destroy the sections we're chewing (up to 2 at a time)
+        if (mushroom) {
+          for (const sectionIndex of this.targetSections) {
+            if (sectionIndex >= 0 && sectionIndex < 16 && mushroom.sections[sectionIndex]) {
+              mushroom.sections[sectionIndex] = false
+              mushroom.health--
+            }
+          }
+        }
+
+        this.targetBlock = null
+        this.targetSections = []
+
+        // Target player position instead of always moving down
+        const dirToPlayer = {
+          x: playerPosition.x - this.position.x,
+          y: playerPosition.y - this.position.y
+        }
+        
+        // Add slight randomness to prevent coordinated group behavior
+        dirToPlayer.x += (Math.random() * 0.6 - 0.3)
+        dirToPlayer.y += (Math.random() * 0.6 - 0.3)
+        
+        // Normalize direction
+        const length = Math.sqrt(dirToPlayer.x * dirToPlayer.x + dirToPlayer.y * dirToPlayer.y)
+        if (length > 0) {
+          this.direction = {
+            x: dirToPlayer.x / length,
+            y: dirToPlayer.y / length
+          }
+        } else {
+          // Fallback to random direction if exactly at player position
+          this.direction = { 
+            x: Math.random() * 2 - 1, 
+            y: Math.random() * 2 - 1 
+          }
+        }
+        
+        // Force movement away from the block we just chewed to prevent getting stuck
+        this.position.x += this.direction.x * 2
+        this.position.y += this.direction.y * 2
+      }
+      return
+    }
+
+    // Check if there's a block below, above, or to the sides
+    const blockInfo = this.findBlockInPath(mushrooms)
+
+    if (blockInfo) {
+      // Start chewing the block or change direction
+      if (this.direction.y > 0 && blockInfo.direction === "below") {
+        // If moving down and block is below, start chewing
+        this.isChewing = true
+        this.targetBlock = { x: blockInfo.mushroom.position.x, y: blockInfo.mushroom.position.y }
+
+        // Find a second adjacent section to chew if possible
+        this.targetSections = [blockInfo.sectionIndex]
+
+        // Try to find an adjacent section that's also active
+        const row = Math.floor(blockInfo.sectionIndex / 4)
+        const col = blockInfo.sectionIndex % 4
+
+        // Check right
+        if (col < 3 && blockInfo.mushroom.sections[row * 4 + col + 1]) {
+          this.targetSections.push(row * 4 + col + 1)
+        }
+        // Check left
+        else if (col > 0 && blockInfo.mushroom.sections[row * 4 + col - 1]) {
+          this.targetSections.push(row * 4 + col - 1)
+        }
+        // Check below
+        else if (row < 3 && blockInfo.mushroom.sections[(row + 1) * 4 + col]) {
+          this.targetSections.push((row + 1) * 4 + col)
+        }
+        // Check above
+        else if (row > 0 && blockInfo.mushroom.sections[(row - 1) * 4 + col]) {
+          this.targetSections.push((row - 1) * 4 + col)
+        }
+
+        return
+      } else {
+        // Try to chew through blocks in any direction to prevent getting stuck
+        this.isChewing = true
+        this.targetBlock = { x: blockInfo.mushroom.position.x, y: blockInfo.mushroom.position.y }
+        this.targetSections = [blockInfo.sectionIndex]
+        
+        // Find a second adjacent section to chew if possible
+        const row = Math.floor(blockInfo.sectionIndex / 4)
+        const col = blockInfo.sectionIndex % 4
+        
+        // Check neighboring sections in all directions
+        const neighbors = [
+          row * 4 + ((col + 1) % 4),      // right
+          row * 4 + ((col - 1 + 4) % 4),  // left
+          ((row + 1) % 4) * 4 + col,      // below
+          ((row - 1 + 4) % 4) * 4 + col   // above
+        ]
+        
+        for (const neighbor of neighbors) {
+          if (blockInfo.mushroom.sections[neighbor]) {
+            this.targetSections.push(neighbor)
+            break
+          }
+        }
+        this.lastDirectionChange = Date.now()
+        return
+      }
+    }
+
+    const now = Date.now()
+
+    // Check if spider is at the bottom of the screen
+    this.isAtBottom = this.position.y >= bounds.y - BORDER_WIDTH - this.size - 10
+
+    // More aggressive chasing when at the bottom
+    if (this.isAtBottom) {
+      // Calculate direction to player
+      const dirToPlayer = {
+        x: playerPosition.x - this.position.x,
+        y: playerPosition.y - this.position.y,
+      }
+
+      // Normalize direction
+      const length = Math.sqrt(dirToPlayer.x * dirToPlayer.x + dirToPlayer.y * dirToPlayer.y)
+      if (length > 0) {
+        dirToPlayer.x /= length
+        dirToPlayer.y /= length
+      }
+
+      // Set direction toward player with higher probability
+      if (Math.random() < 0.3 || now - this.lastDirectionChange > this.directionChangeDelay) {
+        this.direction = {
+          x: dirToPlayer.x,
+          y: dirToPlayer.y < 0 ? -1 : 0, // Only go up or horizontal
+        }
+        this.lastDirectionChange = now
+      }
+    }
+    // Normal behavior when not at bottom
+    else {
+      // Calculate direction to player for more direct targeting
+      const dirToPlayer = {
+        x: playerPosition.x - this.position.x,
+        y: playerPosition.y - this.position.y
+      }
+      const distance = Math.sqrt(dirToPlayer.x * dirToPlayer.x + dirToPlayer.y * dirToPlayer.y)
+      
+      // Normalize direction
+      if (distance > 0) {
+        dirToPlayer.x /= distance
+        dirToPlayer.y /= distance
+      }
+      
+      // More frequently change direction to chase player (50% chance vs 10% before)
+      if (now - this.lastDirectionChange > this.directionChangeDelay && Math.random() < 0.5) {
+        // Move toward player with slight randomness for more natural movement
+        this.direction = {
+          x: dirToPlayer.x + (Math.random() * 0.4 - 0.2),
+          y: dirToPlayer.y + (Math.random() * 0.4 - 0.2)
+        }
+        
+        // Normalize direction vector
+        const length = Math.sqrt(this.direction.x * this.direction.x + this.direction.y * this.direction.y)
+        if (length > 0) {
+          this.direction.x /= length
+          this.direction.y /= length  
+        }
+        
+        this.lastDirectionChange = now
+      }
+      // Occasionally move randomly (reduced from 5% to 2% chance)
+      else if (now - this.lastDirectionChange > this.directionChangeDelay && Math.random() < 0.02) {
+        // Random movement as before
+        if (this.direction.y === 0) {
+          this.direction = { x: 0, y: 1 }
+        } else if (this.direction.y > 0) {
+          this.direction = { x: Math.random() > 0.5 ? 1 : -1, y: 0 }
+        } else {
+          this.direction = { x: Math.random() > 0.5 ? 1 : -1, y: 0 }
+        }
+        this.lastDirectionChange = now
+      }
+    }
+
+    // Store previous position for collision detection
+    const prevPosition = { ...this.position }
+
+    // Normal movement if not chewing
+    const actualSpeed = this.isAtBottom
+      ? this.aggressiveChaseSpeed
+      : this.direction.y < 0
+        ? this.chaseSpeed
+        : this.speed // Slower when moving up, faster when aggressive
+
+    this.position.x += this.direction.x * actualSpeed
+    this.position.y += this.direction.y * actualSpeed
+
+    // Enforce boundaries - keep spiders inside the play area
+    if (this.position.x < BORDER_WIDTH) {
+      this.position.x = BORDER_WIDTH
+      this.direction.x *= -1
+    } else if (this.position.x > bounds.x - BORDER_WIDTH - this.size) {
+      this.position.x = bounds.x - BORDER_WIDTH - this.size
+      this.direction.x *= -1
+    }
+
+    // If hit bottom, stay at bottom and move horizontally
+    if (this.position.y >= bounds.y - BORDER_WIDTH - this.size) {
+      this.position.y = bounds.y - BORDER_WIDTH - this.size
+      if (this.direction.y > 0) {
+        this.direction = { x: Math.random() > 0.5 ? 1 : -1, y: 0 }
+      }
+    }
+
+    // If hit top, start moving horizontally or down
+    if (this.position.y <= BORDER_WIDTH) {
+      this.position.y = BORDER_WIDTH
+      this.direction = { x: Math.random() > 0.5 ? 1 : -1, y: Math.random() > 0.7 ? 0 : 1 }
+    }
+
+    // Check for collisions with mushrooms after moving
+    for (let i = 0; i < mushrooms.length; i++) {
+      const mushroom = mushrooms[i]
+      const collision = this.checkCollisionWithMushroom(mushroom)
+      
+      if (collision.collided) {
+        // Start chewing instead of just destroying one section
+        // This prevents getting stuck in collision loops
+        this.isChewing = true
+        this.targetBlock = { x: mushroom.position.x, y: mushroom.position.y }
+        this.chewingTime = 0
+        
+        // Find sections to chew
+        let activeSections = []
+        for (let j = 0; j < mushroom.sections.length; j++) {
+          if (mushroom.sections[j]) {
+            activeSections.push(j)
+          }
+        }
+        
+        // If there are active sections, target up to 3 of them
+        if (activeSections.length > 0) {
+          this.targetSections = []
+          for (let j = 0; j < Math.min(3, activeSections.length); j++) {
+            const randomIndex = Math.floor(Math.random() * activeSections.length)
+            this.targetSections.push(activeSections[randomIndex])
+            activeSections.splice(randomIndex, 1) // Remove to avoid duplicates
+          }
+          return // Start chewing
+        }
+        
+        // If no active sections, revert position and change direction
+        this.position = prevPosition
+
+        // Calculate direction toward player with random component
+        const dirToPlayer = {
+          x: playerPosition.x - this.position.x,
+          y: playerPosition.y - this.position.y
+        }
+        
+        // Normalize and add randomness
+        const length = Math.sqrt(dirToPlayer.x * dirToPlayer.x + dirToPlayer.y * dirToPlayer.y)
+        if (length > 0) {
+          this.direction = {
+            x: (dirToPlayer.x / length) + (Math.random() * 0.8 - 0.4),
+            y: (dirToPlayer.y / length) + (Math.random() * 0.8 - 0.4)
+          }
+        } else {
+          // Random direction if exactly at player
+          this.direction = { 
+            x: Math.random() * 2 - 1, 
+            y: Math.random() * 2 - 1 
+          }
+        }
+        
+        // Normalize final direction
+        const dirLength = Math.sqrt(this.direction.x * this.direction.x + this.direction.y * this.direction.y) 
+        if (dirLength > 0) {
+          this.direction.x /= dirLength
+          this.direction.y /= dirLength
+        }
+
+        this.lastDirectionChange = Date.now()
+        break
+      }
+    }
+  }
+
+  checkCollisionWithMushroom(mushroom: Mushroom): { collided: boolean; destroyed: boolean } {
+    // Check if any part of the spider collides with any section of the mushroom
+    const spiderRight = this.position.x + this.size
+    const spiderBottom = this.position.y + this.size
+    const mushroomRight = mushroom.position.x + mushroom.size
+    const mushroomBottom = mushroom.position.y + mushroom.size
+
+    if (
+      this.position.x < mushroomRight &&
+      spiderRight > mushroom.position.x &&
+      this.position.y < mushroomBottom &&
+      spiderBottom > mushroom.position.y
+    ) {
+      // Determine if the spider should destroy a section of the mushroom
+      // Higher chance to destroy if the spider is aggressive (at bottom of screen)
+      const destroyChance = this.isAtBottom ? 0.6 : 0.3
+      const shouldDestroy = Math.random() < destroyChance
+
+      return { collided: true, destroyed: shouldDestroy }
+    }
+    return { collided: false, destroyed: false }
+  }
+
+  findBlockInPath(mushrooms: Mushroom[]): { mushroom: Mushroom; sectionIndex: number; direction: string } | null {
+    // Check for blocks in the direction we're moving
+    for (const mushroom of mushrooms) {
+      // Check each section of the mushroom
+      for (let i = 0; i < 16; i++) {
+        if (!mushroom.sections[i]) continue
+
+        const sectionX = mushroom.position.x + (i % 4) * SECTION_SIZE
+        const sectionY = mushroom.position.y + Math.floor(i / 4) * SECTION_SIZE
+
+        // Check below (if moving down)
+        if (
+          this.direction.y > 0 &&
+          this.position.x < sectionX + SECTION_SIZE &&
+          this.position.x + this.size > sectionX &&
+          this.position.y + this.size <= sectionY &&
+          this.position.y + this.size + this.speed >= sectionY
+        ) {
+          return { mushroom, sectionIndex: i, direction: "below" }
+        }
+
+        // Check above (if moving up)
+        if (
+          this.direction.y < 0 &&
+          this.position.x < sectionX + SECTION_SIZE &&
+          this.position.x + this.size > sectionX &&
+          this.position.y >= sectionY + SECTION_SIZE &&
+          this.position.y - this.speed <= sectionY + SECTION_SIZE
+        ) {
+          return { mushroom, sectionIndex: i, direction: "above" }
+        }
+
+        // Check left (if moving left)
+        if (
+          this.direction.x < 0 &&
+          this.position.y < sectionY + SECTION_SIZE &&
+          this.position.y + this.size > sectionY &&
+          this.position.x >= sectionX + SECTION_SIZE &&
+          this.position.x - this.speed <= sectionX + SECTION_SIZE
+        ) {
+          return { mushroom, sectionIndex: i, direction: "left" }
+        }
+
+        // Check right (if moving right)
+        if (
+          this.direction.x > 0 &&
+          this.position.y < sectionY + SECTION_SIZE &&
+          this.position.y + this.size > sectionY &&
+          this.position.x + this.size <= sectionX &&
+          this.position.x + this.size + this.speed >= sectionX
+        ) {
+          return { mushroom, sectionIndex: i, direction: "right" }
+        }
+      }
+    }
+    return null;
+  }
+}
+
+export default function MegapedeGame() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const gameContainerRef = useRef<HTMLDivElement | null>(null)
+  const [gameStarted, setGameStarted] = useState(false)
+  const [gameOver, setGameOver] = useState(false)
+  const [score, setScore] = useState(0)
+  const [level, setLevel] = useState(1)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [showControls, setShowControls] = useState(false)
+  
+  // Create image for player ship and spider
+  const shipImageRef = useRef<HTMLImageElement | null>(null)
+  const hungryImageRef = useRef<HTMLImageElement | null>(null)
+
+  // Game state refs to avoid dependency issues in the game loop
+  const gameStateRef = useRef({
+    player: {
+      position: { x: GAME_WIDTH / 2, y: GAME_HEIGHT - PLAYER_SIZE * 2 },
+      size: PLAYER_SIZE,
+      speed: PLAYER_SPEED,
+      color: "#FF0000",
+      energized: false,
+      energyTimer: 0,
+      killCount: 0,
+      energyThreshold: 10,
+      energyDuration: 5000,
+      plasmaAmmo: 0,
+      plasmaActive: false,
+      plasmaTimer: 0,
+      plasmaDuration: 5000,
+    } as Player,
+    bullets: [] as Bullet[],
+    megapedeChains: [] as MegapedeChain[],
+    spiders: [] as Spider[],
+    mushrooms: [] as Mushroom[],
+    particles: [] as Particle[],
+    powerUps: [] as PowerUp[],
+    obstacleGrid: new Set<string>(),
+    keys: {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      space: false,
+    },
+    autoShootEnabled: false, // New state for toggle shooting
+    lastShootTime: 0,
+    lastUpdateTime: 0,
+    lastSpiderSpawnTime: 0,
+    spiderSpawnRate: 10000,
+    lastPowerUpSpawnTime: 0,
+    powerUpSpawnRate: 45000, // Increased from 15000 to 45000 (45 seconds) to make power-ups more rare
+    lastMushroomSpawnTime: 0,
+    mushroomSpawnRate: 3000,
+    score: 0,
+    level: 1,
+    gameOver: false,
+    levelEmoji: "",
+  })
+
+  // Create particles when mushroom is hit
+  const createMushroomParticles = (position: Vector2, sectionIndex: number, colorSet: string[]) => {
+    const state = gameStateRef.current
+
+    // Calculate section position
+    const sectionX = position.x + (sectionIndex % 4) * SECTION_SIZE
+    const sectionY = position.y + Math.floor(sectionIndex / 4) * SECTION_SIZE
+
+    // Create simplified particles for better performance
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = 1 + Math.random() * 3
+      // Simplify color selection
+      const color = colorSet[Math.floor(Math.random() * colorSet.length)]
+
+      state.particles.push({
+        position: {
+          x: sectionX + SECTION_SIZE / 2,
+          y: sectionY + SECTION_SIZE / 2,
+        },
+        velocity: {
+          x: Math.cos(angle) * speed,
+          y: Math.sin(angle) * speed,
+        },
+        size: 1 + Math.random() * 2, // Smaller particles
+        color,
+        createdAt: Date.now(),
+        lifespan: 200 + Math.random() * 300, // Shorter lifespan
+      })
+    }
+  }
+
+  // Create a new mushroom
+  const createMushroom = (x: number, y: number) => {
+    const state = gameStateRef.current
+
+    // Align to grid and ensure mushrooms don't spawn on borders
+    let gridX = Math.floor(x / GRID_SIZE) * GRID_SIZE
+    let gridY = Math.floor(y / GRID_SIZE) * GRID_SIZE
+    
+    // Ensure mushrooms stay within playable area (away from borders)
+    if (gridX < BORDER_WIDTH + GRID_SIZE) {
+      gridX = BORDER_WIDTH + GRID_SIZE
+    } else if (gridX > GAME_WIDTH - BORDER_WIDTH - MUSHROOM_SIZE - GRID_SIZE) {
+      gridX = GAME_WIDTH - BORDER_WIDTH - MUSHROOM_SIZE - GRID_SIZE
+    }
+    
+    if (gridY < BORDER_WIDTH + GRID_SIZE) {
+      gridY = BORDER_WIDTH + GRID_SIZE
+    } else if (gridY > GAME_HEIGHT - BOTTOM_BORDER_WIDTH - MUSHROOM_SIZE - GRID_SIZE) {
+      gridY = GAME_HEIGHT - BOTTOM_BORDER_WIDTH - MUSHROOM_SIZE - GRID_SIZE
+    }
+
+    // Select a random color set for this egg
+    const colorSet = EGG_COLORS[Math.floor(Math.random() * EGG_COLORS.length)]
+
+    const mushroom: Mushroom = {
+      position: { x: gridX, y: gridY },
+      size: MUSHROOM_SIZE,
+      health: 16, // 16 sections (4x4 grid)
+      colorSet, // Assign the color set
+      sections: Array(16).fill(true), // All 16 sections intact
+    }
+
+    state.mushrooms.push(mushroom)
+
+    // Add to obstacle grid
+    const key = `${Math.floor(gridX / GRID_SIZE)},${Math.floor(gridY / GRID_SIZE)}`
+    state.obstacleGrid.add(key)
+
+    return mushroom
+  }
+
+  // Initialize game
+  const initGame = () => {
+    setGameStarted(true)
+    setGameOver(false)
+
+    // Reset game state
+    const state = gameStateRef.current
+    state.player = {
+      position: {
+        x: GAME_WIDTH / 2 - PLAYER_SIZE / 2,
+        y: GAME_HEIGHT - PLAYER_SIZE * 2,
+      },
+      size: PLAYER_SIZE,
+      speed: PLAYER_SPEED,
+      color: "#00FFFF", // Cyan
+      energized: false,
+      energyTimer: 0,
+      killCount: 0,
+      energyThreshold: 10, // Number of kills needed to get energy
+      energyDuration: 5000, // 5 seconds of energized mode
+      plasmaAmmo: 0,
+      plasmaActive: false,
+      plasmaTimer: 0,
+      plasmaDuration: 5000, // 5 seconds of plasma mode
+    }
+    state.bullets = []
+    state.mushrooms = []
+    state.particles = []
+    state.megapedeChains = []
+    state.spiders = []
+    state.powerUps = []
+    state.obstacleGrid = new Set()
+    state.score = 0
+    state.level = 1
+    state.lastUpdateTime = Date.now()
+    state.lastSpiderSpawnTime = Date.now()
+    
+    // Choose a random emoji for this level's megapede and update global variables
+    state.levelEmoji = EMOJI_HEADS[Math.floor(Math.random() * EMOJI_HEADS.length)]
+    CURRENT_LEVEL_EMOJI = state.levelEmoji // Update the global emoji variable
+    CURRENT_GAME_LEVEL = state.level     // Update the global level variable
+
+    // Significantly more mushrooms
+    const mushroomCount = 80 + state.level * 10 // Increased from 30 to 80
+
+    // Create mushrooms in the top half of the screen
+    for (let i = 0; i < mushroomCount * 0.6; i++) {
+      const mushroomX = Math.floor(Math.random() * (GAME_WIDTH - MUSHROOM_SIZE * 2 - BORDER_WIDTH * 2) + BORDER_WIDTH)
+      const mushroomY = Math.floor(Math.random() * (GAME_HEIGHT / 2 - MUSHROOM_SIZE * 2) + BORDER_WIDTH)
+      createMushroom(mushroomX, mushroomY)
+    }
+
+    // Create mushrooms in the player's area (bottom half)
+    for (let i = 0; i < mushroomCount * 0.4; i++) {
+      const mushroomX = Math.floor(Math.random() * (GAME_WIDTH - MUSHROOM_SIZE * 2 - BORDER_WIDTH * 2) + BORDER_WIDTH)
+      const mushroomY = Math.floor(Math.random() * (GAME_HEIGHT / 2) + GAME_HEIGHT / 2)
+      createMushroom(mushroomX, mushroomY)
+    }
+
+    // Create megapede chain with length based on level
+    // Base length + bonus segments every SEGMENTS_INCREASE_LEVEL levels
+    // Add one segment for every level instead of 4 segments every few levels
+    const bonusSegments = state.level - 1 // One extra segment per level
+    const segmentCount = BASE_SEGMENT_COUNT + bonusSegments
+    
+    const startX = Math.random() > 0.5 ? BORDER_WIDTH : GAME_WIDTH - BORDER_WIDTH - SEGMENT_SIZE
+    const direction = startX === BORDER_WIDTH ? 1 : -1
+    const startY = SEGMENT_SIZE + BORDER_WIDTH
+
+    // The megapede constructor will use the global CURRENT_GAME_LEVEL variable
+    const megapedeChain = new MegapedeChain(segmentCount, { x: startX, y: startY }, direction, SEGMENT_SIZE)
+
+    state.megapedeChains.push(megapedeChain)
+
+    // Reset timers
+    state.lastSpiderSpawnTime = Date.now()
+
+    state.score = score
+    state.level = level
+    CURRENT_GAME_LEVEL = level // Update global level variable
+    state.gameOver = false
+
+    setGameStarted(true)
+    setGameOver(false)
+  }
+
+  // Handle keyboard input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const state = gameStateRef.current
+
+      switch (e.key) {
+        case "ArrowLeft":
+          state.keys.left = true
+          break
+        case "ArrowRight":
+          state.keys.right = true
+          break
+        case "ArrowUp":
+          state.keys.up = true
+          break
+        case "ArrowDown":
+          state.keys.down = true
+          break
+        case " ":
+          state.keys.space = true
+          break
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const state = gameStateRef.current
+
+      switch (e.key) {
+        case "ArrowLeft":
+          state.keys.left = false
+          break
+        case "ArrowRight":
+          state.keys.right = false
+          break
+        case "ArrowUp":
+          state.keys.up = false
+          break
+        case "ArrowDown":
+          state.keys.down = false
+          break
+        case " ":
+          state.keys.space = false
+          break
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    window.addEventListener("keyup", handleKeyUp)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+      window.removeEventListener("keyup", handleKeyUp)
+    }
+  }, [])
+
+  // Mobile touch control handlers
+  window.handleTouchStart = (direction: string) => {
+    const state = gameStateRef.current
+    if (direction === "left") state.keys.left = true
+    if (direction === "right") state.keys.right = true
+    if (direction === "up") state.keys.up = true
+    if (direction === "down") state.keys.down = true
+    if (direction === "shoot") {
+      // Toggle auto shooting with spacebar on key press, not on hold
+      if (!state.keys.space) {
+        state.keys.space = true
+        state.autoShootEnabled = !state.autoShootEnabled
+      }
+    }
+  }
+  
+  window.handleTouchEnd = (direction: string) => {
+    const state = gameStateRef.current
+    if (direction === "left") state.keys.left = false
+    if (direction === "right") state.keys.right = false
+    if (direction === "up") state.keys.up = false
+    if (direction === "down") state.keys.down = false
+    if (direction === "shoot") state.keys.space = false
+  }
+
+  // Game loop
+  useEffect(() => {
+    if (!gameStarted) return
+
+    let animationFrameId: number
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext("2d")
+
+    if (!canvas || !ctx) return
+
+    // Load the ship image with error handling
+    const shipImage = new Image()
+    shipImage.onload = () => {
+      console.log('Ship image loaded successfully')
+    }
+    shipImage.onerror = (e) => {
+      console.error('Error loading ship image:', e)
+      shipImageRef.current = null // Set to null on error to use fallback
+    }
+    shipImage.src = '/logo.png' // Use the AquaPrime logo from the main public directory
+    shipImageRef.current = shipImage
+    
+    // Load the hungry image for spiders with error handling
+    const hungryImage = new Image()
+    // Add error and load event handlers before setting src
+    hungryImage.onload = () => {
+      console.log('Hungry image loaded successfully')
+    }
+    hungryImage.onerror = (e) => {
+      console.error('Error loading hungry image:', e)
+    }
+    // Try paths that are likely to work with Next.js public assets
+    // Check multiple possible locations for this file
+    hungryImage.src = '/ICON.png' // Use ICON.png as requested
+    hungryImageRef.current = hungryImage
+
+    // Resize canvas
+    canvas.width = GAME_WIDTH
+    canvas.height = GAME_HEIGHT
+
+    const gameLoop = () => {
+      const state = gameStateRef.current
+
+      if (state.gameOver) {
+        setGameOver(true)
+        setGameStarted(false)
+        return
+      }
+
+      // Create a beautiful animated gradient background
+      const bgGradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT)
+      const timeOffset = Date.now() / 10000 // Slow subtle animation
+      
+      // Animate gradient colors
+      bgGradient.addColorStop(0, BG_GRADIENT_COLORS[0])
+      bgGradient.addColorStop(0.5 + Math.sin(timeOffset) * 0.2, BG_GRADIENT_COLORS[1])
+      bgGradient.addColorStop(1, BG_GRADIENT_COLORS[2])
+      
+      ctx.fillStyle = bgGradient
+      ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
+      
+      // Add subtle starfield
+      const starCount = 50
+      for (let i = 0; i < starCount; i++) {
+        const x = Math.sin(i * 7.5 + timeOffset) * GAME_WIDTH/2 + GAME_WIDTH/2
+        const y = Math.cos(i * 3.3 + timeOffset * 1.2) * GAME_HEIGHT/2 + GAME_HEIGHT/2
+        const size = 0.5 + Math.sin(i + timeOffset * 2) * 0.5
+        
+        // Star twinkle effect
+        const alpha = 0.5 + Math.sin(i * 0.5 + timeOffset * 3) * 0.5
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
+        ctx.beginPath()
+        ctx.arc(x, y, size, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      // Draw game border with gradient
+      ctx.lineWidth = BORDER_WIDTH
+      
+      // Create gradient for border
+      const borderGradient = ctx.createLinearGradient(0, 0, GAME_WIDTH, GAME_HEIGHT)
+      borderGradient.addColorStop(0, "#4D88FF") // Light blue
+      borderGradient.addColorStop(0.5, "#0044CC") // Medium blue
+      borderGradient.addColorStop(1, "#002266") // Dark blue
+      
+      ctx.strokeStyle = borderGradient
+      
+      // Draw top border
+      ctx.beginPath()
+      ctx.lineWidth = BORDER_WIDTH
+      ctx.moveTo(0, BORDER_WIDTH/2)
+      ctx.lineTo(GAME_WIDTH, BORDER_WIDTH/2)
+      ctx.stroke()
+      
+      // Draw left border
+      ctx.beginPath()
+      ctx.lineWidth = BORDER_WIDTH
+      ctx.moveTo(BORDER_WIDTH/2, 0)
+      ctx.lineTo(BORDER_WIDTH/2, GAME_HEIGHT)
+      ctx.stroke()
+      
+      // Draw right border
+      ctx.beginPath()
+      ctx.lineWidth = BORDER_WIDTH
+      ctx.moveTo(GAME_WIDTH - BORDER_WIDTH/2, 0)
+      ctx.lineTo(GAME_WIDTH - BORDER_WIDTH/2, GAME_HEIGHT)
+      ctx.stroke()
+      
+      // Draw bottom border - thicker
+      ctx.beginPath()
+      ctx.lineWidth = BOTTOM_BORDER_WIDTH
+      ctx.moveTo(0, GAME_HEIGHT - BOTTOM_BORDER_WIDTH/2)
+      ctx.lineTo(GAME_WIDTH, GAME_HEIGHT - BOTTOM_BORDER_WIDTH/2)
+      ctx.stroke()
+      
+      // Draw text in the bottom border
+      ctx.fillStyle = "#FFFFFF"
+      ctx.font = "12px Arial"
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      // Draw instructions text
+      ctx.fillText("Use arrow keys to move and spacebar to shoot", GAME_WIDTH/2, GAME_HEIGHT - BOTTOM_BORDER_WIDTH/2)
+      
+      // Draw score and level on the blue bar
+      ctx.font = "bold 18px Arial"
+      ctx.fillStyle = "white"
+      ctx.textAlign = "left"
+      ctx.fillText(`Score: ${state.score}`, 20, GAME_HEIGHT - BOTTOM_BORDER_WIDTH/2)
+      
+      ctx.textAlign = "right"
+      ctx.fillText(`Level: ${state.level}`, GAME_WIDTH - 20, GAME_HEIGHT - BOTTOM_BORDER_WIDTH/2)
+
+      // Update player position
+      if (state.keys.left) {
+        state.player.position.x -= state.player.speed
+      }
+      if (state.keys.right) {
+        state.player.position.x += state.player.speed
+      }
+      if (state.keys.up) {
+        state.player.position.y -= state.player.speed
+      }
+      if (state.keys.down) {
+        state.player.position.y += state.player.speed
+      }
+
+      // Keep player within bounds
+      state.player.position.x = Math.max(
+        BORDER_WIDTH,
+        Math.min(canvas.width - BORDER_WIDTH - state.player.size, state.player.position.x),
+      )
+      state.player.position.y = Math.max(
+        canvas.height / 2,
+        Math.min(canvas.height - BOTTOM_BORDER_WIDTH - state.player.size, state.player.position.y),
+      )
+
+      // Check for energy expiration
+      if (state.player.energized && Date.now() > state.player.energyTimer + state.player.energyDuration) {
+        state.player.energized = false
+      }
+      
+      // Check for plasma expiration
+      if (state.player.plasmaActive && Date.now() > state.player.plasmaTimer + state.player.plasmaDuration) {
+        state.player.plasmaActive = false
+      }
+
+      // Update player energy state
+      if (state.player.energized && Date.now() - state.player.energyTimer > state.player.energyDuration) {
+        state.player.energized = false
+        state.player.color = "#FF0000"
+      }
+
+      // Shoot bullets - either with auto-shoot or manual shoot
+      const currentTime = Date.now()
+      if ((state.autoShootEnabled || state.keys.space) && currentTime - state.lastShootTime > SHOOT_COOLDOWN) {
+        // Check if plasma mode is active for special bullets
+        const isPlasma = state.player.plasmaActive
+        const bulletSize = isPlasma ? 25 : BULLET_SIZE // Much larger plasma bullets
+        const bulletSpeed = isPlasma ? BULLET_SPEED * 0.7 : BULLET_SPEED // Plasma bullets are slower
+        
+        state.bullets.push({
+          position: {
+            x: state.player.position.x + state.player.size / 2 - bulletSize / 2,
+            y: state.player.position.y - bulletSize
+          },
+          size: bulletSize,
+          speed: bulletSpeed,
+          active: true,
+          isPlasma: isPlasma
+        })
+        state.lastShootTime = currentTime
+      }
+
+      // Draw power-ups
+      state.powerUps.forEach((powerUp) => {
+        if (powerUp.active) {
+          // Update pulse phase for visual effect
+          powerUp.pulsePhase = (powerUp.pulsePhase + 0.1) % (Math.PI * 2)
+          
+          // Create pulsing glow effect
+          const pulseSize = 1 + Math.sin(powerUp.pulsePhase) * 0.2
+          
+          // Draw pulsing blue glow
+          ctx.fillStyle = "rgba(0, 170, 255, 0.3)"
+          ctx.beginPath()
+          ctx.arc(
+            powerUp.position.x + powerUp.size / 2,
+            powerUp.position.y + powerUp.size / 2,
+            powerUp.size * pulseSize,
+            0,
+            Math.PI * 2
+          )
+          ctx.fill()
+          
+          // Draw plasma icon
+          ctx.fillStyle = "#00AAFF"
+          ctx.beginPath()
+          ctx.arc(
+            powerUp.position.x + powerUp.size / 2,
+            powerUp.position.y + powerUp.size / 2,
+            powerUp.size / 3,
+            0,
+            Math.PI * 2
+          )
+          ctx.fill()
+          
+          // Draw lightning bolt symbol
+          ctx.strokeStyle = "white"
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          const centerX = powerUp.position.x + powerUp.size / 2
+          const centerY = powerUp.position.y + powerUp.size / 2
+          ctx.moveTo(centerX - 3, centerY - 6)
+          ctx.lineTo(centerX + 3, centerY - 2)
+          ctx.lineTo(centerX - 2, centerY + 1)
+          ctx.lineTo(centerX + 4, centerY + 6)
+          ctx.stroke()
+        }
+      })
+      
+      // Check player collision with mushrooms - player can destroy mushrooms by flying into them
+      state.mushrooms.forEach((mushroom) => {
+        if (
+          state.player.position.x < mushroom.position.x + mushroom.size &&
+          state.player.position.x + state.player.size > mushroom.position.x &&
+          state.player.position.y < mushroom.position.y + mushroom.size &&
+          state.player.position.y + state.player.size > mushroom.position.y
+        ) {
+          // Destroy sections that the player touches
+          for (let i = 0; i < 16; i++) {
+            if (mushroom.sections[i]) {
+              const sectionX = mushroom.position.x + (i % 4) * SECTION_SIZE
+              const sectionY = mushroom.position.y + Math.floor(i / 4) * SECTION_SIZE
+
+              if (
+                state.player.position.x < sectionX + SECTION_SIZE &&
+                state.player.position.x + state.player.size > sectionX &&
+                state.player.position.y < sectionY + SECTION_SIZE &&
+                state.player.position.y + state.player.size > sectionY
+              ) {
+                mushroom.sections[i] = false
+                mushroom.health--
+                createMushroomParticles(mushroom.position, i, mushroom.colorSet)
+                state.score += 1
+              }
+            }
+          }
+
+          // Remove from obstacle grid if completely destroyed
+          if (mushroom.health <= 0) {
+            const key = `${Math.floor(mushroom.position.x / GRID_SIZE)},${Math.floor(mushroom.position.y / GRID_SIZE)}`
+            state.obstacleGrid.delete(key)
+          }
+        }
+      })
+
+      // Update bullets
+      state.bullets.forEach((bullet) => {
+        bullet.position.y -= bullet.speed
+
+        // Remove bullets that go off screen
+        if (bullet.position.y < BORDER_WIDTH) {
+          bullet.active = false
+        }
+
+        // Check collisions between player and power-ups
+        state.powerUps.forEach((powerUp, index) => {
+          if (!powerUp.active) return
+          
+          // Check for collision with player using a more generous circle-based detection
+          // Calculate centers for player and power-up
+          const playerCenterX = state.player.position.x + state.player.size / 2
+          const playerCenterY = state.player.position.y + state.player.size / 2
+          const powerUpCenterX = powerUp.position.x + powerUp.size / 2
+          const powerUpCenterY = powerUp.position.y + powerUp.size / 2
+          
+          // Calculate distance between centers
+          const dx = playerCenterX - powerUpCenterX
+          const dy = playerCenterY - powerUpCenterY
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          
+          // Use a generous collision radius (60% of combined sizes)
+          const collisionRadius = (state.player.size / 2 + powerUp.size / 2) * 1.6
+          
+          // Check if distance is less than collision radius
+          if (distance < collisionRadius) {
+            // Collect the power-up
+            powerUp.active = false
+            
+            // Apply power-up effect based on type
+            if (powerUp.type === 'plasma') {
+              state.player.plasmaActive = true
+              state.player.plasmaTimer = Date.now()
+              
+              // Remove the collected power-up
+              state.powerUps.splice(index, 1)
+              
+              // Create particles for visual effect
+              for (let i = 0; i < 15; i++) {
+                state.particles.push({
+                  position: { ...powerUp.position },
+                  velocity: {
+                    x: (Math.random() - 0.5) * 5,
+                    y: (Math.random() - 0.5) * 5
+                  },
+                  size: 3,
+                  color: '#00AAFF',
+                  lifespan: 1000, // 1 second
+                  createdAt: Date.now()
+                })
+              }
+            }
+          }
+        })
+
+        // Check collision with mushrooms - using larger hit radius
+        state.mushrooms.forEach((mushroom) => {
+          // Check each section with a larger hit radius
+          for (let i = 0; i < 16; i++) {
+            if (mushroom.sections[i]) {
+              const sectionX = mushroom.position.x + (i % 4) * SECTION_SIZE
+              const sectionY = mushroom.position.y + Math.floor(i / 4) * SECTION_SIZE
+
+              // Create a circular hit area around the bullet
+              const bulletCenterX = bullet.position.x + bullet.size / 2
+              const bulletCenterY = bullet.position.y + bullet.size / 2
+              const mushroomSectionCenterX = sectionX + SECTION_SIZE / 2
+              const mushroomSectionCenterY = sectionY + SECTION_SIZE / 2
+
+              // Use a larger hit radius for plasma bullets
+              const hitRadius = bullet.isPlasma ? BULLET_RADIUS * 1.5 : BULLET_RADIUS
+              const dx = bulletCenterX - mushroomSectionCenterX
+              const dy = bulletCenterY - mushroomSectionCenterY
+              const distance = Math.sqrt(dx * dx + dy * dy)
+
+              // Use larger hit radius for better responsiveness
+              if (bullet.active && distance < hitRadius) {
+                bullet.active = false
+                mushroom.sections[i] = false
+                
+                // Plasma bullets do more damage to blocks
+                if (bullet.isPlasma) {
+                  // Plasma bullets do 3x damage
+                  mushroom.health -= 3
+                } else {
+                  mushroom.health--
+                }
+
+                // Create particles for the broken section
+                createMushroomParticles(mushroom.position, i, mushroom.colorSet)
+
+                // Try to hit an adjacent section too for better responsiveness
+                // Check adjacent sections (right, left, below, above)
+                const adjacentSections = []
+                const row = Math.floor(i / 4)
+                const col = i % 4
+
+                if (col < 3) adjacentSections.push(row * 4 + col + 1) // right
+                if (col > 0) adjacentSections.push(row * 4 + col - 1) // left
+                if (row < 3) adjacentSections.push((row + 1) * 4 + col) // below
+                if (row > 0) adjacentSections.push((row - 1) * 4 + col) // above
+
+                // Randomly select one adjacent section to hit
+                const randomAdjacentIndex = Math.floor(Math.random() * adjacentSections.length)
+                const adjacentSectionIndex = adjacentSections[randomAdjacentIndex]
+
+                if (adjacentSectionIndex !== undefined && mushroom.sections[adjacentSectionIndex]) {
+                  mushroom.sections[adjacentSectionIndex] = false
+                  mushroom.health--
+                  createMushroomParticles(mushroom.position, adjacentSectionIndex, mushroom.colorSet)
+                }
+
+                if (mushroom.health <= 0) {
+                  // Remove from obstacle grid
+                  const key = `${Math.floor(mushroom.position.x / GRID_SIZE)},${Math.floor(mushroom.position.y / GRID_SIZE)}`
+                  state.obstacleGrid.delete(key)
+                  state.score += 10
+                }
+
+                // Break out of the loop once we've hit a section
+                break
+              }
+            }
+          }
+        })
+
+        // Check collision with megapede segments (using circular collision)
+        state.megapedeChains.forEach((chain, chainIndex) => {
+          chain.segments.forEach((segment, segmentIndex) => {
+            if (bullet.active && segment.isAlive) {
+              // Use circular collision detection for better accuracy with round segments
+              const distX = segment.position.x + SEGMENT_SIZE / 2 - (bullet.position.x + bullet.size / 2)
+              const distY = segment.position.y + SEGMENT_SIZE / 2 - (bullet.position.y + bullet.size / 2)
+              const distance = Math.sqrt(distX * distX + distY * distY)
+
+              const hitRadius = bullet.isPlasma ? BULLET_RADIUS * 1.5 : BULLET_RADIUS
+              if (distance < hitRadius + SEGMENT_SIZE / 2) {
+                bullet.active = false
+
+                // Special handling for head segments
+                if (segment.isHead) {
+                  // Create new mushroom where head was hit
+                  const colorSet = EGG_COLORS[Math.floor(Math.random() * EGG_COLORS.length)]
+                  const mushroom = {
+                    position: { ...segment.position },
+                    size: MUSHROOM_SIZE,
+                    health: 16,
+                    colorSet,
+                    sections: Array(16).fill(true),
+                  }
+                  state.mushrooms.push(mushroom)
+
+                  // Add to obstacle grid
+                  const key = `${Math.floor(segment.position.x / GRID_SIZE)},${Math.floor(segment.position.y / GRID_SIZE)}`
+                  state.obstacleGrid.add(key)
+
+                  // Use takeDamage instead of direct destruction to respect armor
+                  segment.takeDamage()
+
+                  // If segment had armor, create armor breaking particles
+                  if (segment.isArmored) {
+                    // Create armor hit particles
+                    for (let i = 0; i < 5; i++) {
+                      state.particles.push({
+                        position: {
+                          x: bullet.position.x,
+                          y: bullet.position.y,
+                        },
+                        velocity: {
+                          x: (Math.random() - 0.5) * 3,
+                          y: (Math.random() - 0.5) * 3,
+                        },
+                        size: PARTICLE_SIZE,
+                        color: "#FFD700", // Gold particles for armor hit
+                        lifespan: 500,
+                        createdAt: Date.now(),
+                      })
+                    }
+                  }
+                  
+                  // If there are segments after the head, create a new chain
+                  if (segmentIndex < chain.segments.length - 1) {
+                    // Create a new chain from the remaining segments
+                    const newChain = chain.createNewChainFromSegments(segmentIndex + 1)
+                    if (newChain) {
+                      state.megapedeChains.push(newChain)
+                    }
+                  }
+
+                  // Remove the dead head from the original chain
+                  chain.segments = chain.segments.filter((s) => s.isAlive)
+
+                  // Increase score
+                  state.score += 150
+                  state.player.killCount += 2
+                }
+                // Regular body segment handling
+                else {
+                  const wasDestroyed = segment.takeDamage()
+
+                  // Visual feedback for hitting armored segment
+                  if (segment.isArmored && !wasDestroyed) {
+                    for (let i = 0; i < 5; i++) {
+                      state.particles.push({
+                        position: {
+                          x: bullet.position.x,
+                          y: bullet.position.y,
+                        },
+                        velocity: {
+                          x: (Math.random() - 0.5) * 3,
+                          y: (Math.random() - 0.5) * 3,
+                        },
+                        size: PARTICLE_SIZE,
+                        color: "#FFD700", // Gold particles for armor hit
+                        lifespan: 500,
+                        createdAt: Date.now(),
+                      })
+                    }
+
+                    // Give some points for hitting armor
+                    state.score += 25
+                  }
+
+                  if (wasDestroyed) {
+                    // Create new mushroom where segment was hit
+                    const colorSet = EGG_COLORS[Math.floor(Math.random() * EGG_COLORS.length)]
+                    const mushroom = {
+                      position: { ...segment.position },
+                      size: MUSHROOM_SIZE,
+                      health: 16,
+                      colorSet,
+                      sections: Array(16).fill(true),
+                    }
+                    state.mushrooms.push(mushroom)
+
+                    // Add to obstacle grid
+                    const key = `${Math.floor(segment.position.x / GRID_SIZE)},${Math.floor(segment.position.y / GRID_SIZE)}`
+                    state.obstacleGrid.add(key)
+
+                    // Split the chain if it's not the head or tail
+                    if (segmentIndex > 0 && segmentIndex < chain.segments.length - 1) {
+                      const newChains = chain.splitAt(segmentIndex)
+
+                      // Replace the current chain with the split chains
+                      state.megapedeChains.splice(chainIndex, 1, ...newChains)
+                    }
+
+                    // Increase score and player kill count
+                    state.score += 100
+                    state.player.killCount++
+                  }
+                }
+
+                // Check if player should be energized
+                if (state.player.killCount >= state.player.energyThreshold) {
+                  state.player.energized = true
+                  state.player.energyTimer = Date.now()
+                  state.player.killCount = 0
+                  state.player.color = "#FF9900" // Orange when energized
+                }
+              }
+            }
+          })
+        })
+
+        // Check collision with spiders
+        state.spiders.forEach((spider) => {
+          if (
+            bullet.active &&
+            spider.isAlive &&
+            bullet.position.x < spider.position.x + spider.size &&
+            bullet.position.x + bullet.size > spider.position.x &&
+            bullet.position.y < spider.position.y + spider.size &&
+            bullet.position.y + bullet.size > spider.position.y
+          ) {
+            bullet.active = false
+            spider.isAlive = false
+            state.score += 300
+            state.player.killCount += 2 // Spiders count more toward energizing
+          }
+        })
+      })
+
+      // Remove inactive bullets
+      state.bullets = state.bullets.filter((bullet) => bullet.active)
+
+      // Remove destroyed mushrooms
+      state.mushrooms = state.mushrooms.filter((mushroom) => mushroom.health > 0)
+
+      // Update particles
+      const particleNow = Date.now()
+      state.particles.forEach((particle) => {
+        const particleAge = particleNow - particle.createdAt
+        const ageRatio = particleAge / particle.lifespan
+        
+        // Skip rendering particles that are almost invisible
+        if (ageRatio > 0.9) return;
+        
+        // Particles fade out as they age
+        const alpha = 1 - ageRatio
+        
+        // Draw circular particles without expensive glow effect
+        ctx.globalAlpha = alpha
+        ctx.fillStyle = particle.color
+        
+        ctx.beginPath()
+        ctx.arc(
+          particle.position.x + particle.size / 2,
+          particle.position.y + particle.size / 2,
+          Math.max(0.1, particle.size * (1 - ageRatio * 0.5)),
+          0,
+          Math.PI * 2
+        )
+        ctx.fill()
+      })
+      ctx.globalAlpha = 1
+
+      // Draw megapede body segments first
+      state.megapedeChains.forEach((chain) => {
+        chain.segments.forEach((segment) => {
+          if (segment.isAlive && !segment.isHead) {
+            // Draw round body segment
+            ctx.fillStyle = segment.color
+            ctx.beginPath()
+            ctx.arc(
+              segment.position.x + SEGMENT_SIZE / 2,
+              segment.position.y + SEGMENT_SIZE / 2,
+              SEGMENT_SIZE / 2,
+              0,
+              Math.PI * 2,
+            )
+            ctx.fill()
+
+            // Draw armor indicator if armored
+            if (segment.isArmored) {
+              // Metallic shine effect
+              const gradient = ctx.createRadialGradient(
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+                0,
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+                SEGMENT_SIZE / 2,
+              )
+              gradient.addColorStop(0, "#FFFFFF")
+              gradient.addColorStop(0.3, segment.color)
+              gradient.addColorStop(1, "#444444")
+
+              ctx.fillStyle = gradient
+              ctx.beginPath()
+              ctx.arc(
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+                SEGMENT_SIZE / 2,
+                0,
+                Math.PI * 2,
+              )
+              ctx.fill()
+
+              // Armor border
+              ctx.strokeStyle = "#FFD700" // Gold color for armor
+              ctx.lineWidth = 2
+              ctx.beginPath()
+              ctx.arc(
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+                SEGMENT_SIZE / 2 + 2,
+                0,
+                Math.PI * 2,
+              )
+              ctx.stroke()
+
+              // Draw armor level indicator
+              ctx.fillStyle = "#FFFFFF"
+              ctx.font = "8px Arial"
+              ctx.textAlign = "center"
+              ctx.textBaseline = "middle"
+              ctx.fillText(
+                segment.armorLevel.toString(),
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+              )
+            }
+          }
+        })
+      })
+
+      // Draw megapede heads on top of everything
+      state.megapedeChains.forEach((chain) => {
+        chain.segments.forEach((segment) => {
+          if (segment.isAlive && segment.isHead) {
+            // Draw shield around head if armored
+            if (segment.isArmored) {
+              // Create a blue translucent color for armored head
+              ctx.fillStyle = "rgba(0, 100, 255, 0.5)" // Blue translucent for head
+              
+              const glowRadius = SEGMENT_SIZE / 2 + 8
+              const gradient = ctx.createRadialGradient(
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+                0,
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+                glowRadius
+              )
+              gradient.addColorStop(0, "rgba(0, 68, 255, 0.7)")
+              gradient.addColorStop(0.5, "rgba(0, 72, 255, 0.4)")
+              gradient.addColorStop(1, "rgba(255, 215, 0, 0)")
+
+              ctx.fillStyle = gradient
+              ctx.beginPath()
+              ctx.arc(
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+                glowRadius,
+                0,
+                Math.PI * 2,
+              )
+              ctx.fill()
+
+              // Shield border
+              ctx.strokeStyle = "#FFD700" // Gold
+              ctx.lineWidth = 3
+              ctx.beginPath()
+              ctx.arc(
+                segment.position.x + SEGMENT_SIZE / 2,
+                segment.position.y + SEGMENT_SIZE / 2,
+                SEGMENT_SIZE / 2 + 4,
+                0,
+                Math.PI * 2,
+              )
+              ctx.stroke()
+            }
+
+            // Draw emoji head directly (no block background) with larger size
+            const emojiFactor = 1.4; // Make emoji 40% larger than the segment
+            ctx.font = `${Math.floor(SEGMENT_SIZE * emojiFactor)}px Arial`
+            ctx.textAlign = "center"
+            ctx.textBaseline = "middle"
+            ctx.fillText(segment.emoji, segment.position.x + SEGMENT_SIZE / 2, segment.position.y + SEGMENT_SIZE / 2)
+          }
+        })
+      })
+
+      // Draw spiders
+      state.spiders.forEach((spider) => {
+        ctx.fillStyle = spider.color
+
+        // Draw spider body (red square)
+        ctx.fillRect(spider.position.x, spider.position.y, spider.size, spider.size)
+        
+        // Draw hungry image on top of the red square if loaded
+        if (hungryImageRef.current && hungryImageRef.current.complete && hungryImageRef.current.naturalWidth > 0) {
+          try {
+            // Make the hungry image 1.5x larger than the spider and center it
+            const enlargeFactor = 1.5;
+            const enlargedSize = spider.size * enlargeFactor;
+            const offsetX = (enlargedSize - spider.size) / 2;
+            const offsetY = (enlargedSize - spider.size) / 2;
+            
+            ctx.drawImage(
+              hungryImageRef.current,
+              spider.position.x - offsetX, 
+              spider.position.y - offsetY,
+              enlargedSize,
+              enlargedSize
+            )
+          } catch (error) {
+            // If drawing fails, just skip it - the red square will still be visible
+            console.error('Error drawing hungry image:', error)
+          }
+        }
+
+        // Draw spider legs
+        ctx.strokeStyle = spider.color
+        ctx.lineWidth = 2
+
+        // Top legs
+        ctx.beginPath()
+        ctx.moveTo(spider.position.x, spider.position.y)
+        ctx.lineTo(spider.position.x - 10, spider.position.y - 8)
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.moveTo(spider.position.x + spider.size, spider.position.y)
+        ctx.lineTo(spider.position.x + spider.size + 10, spider.position.y - 8)
+        ctx.stroke()
+
+        // Bottom legs
+        ctx.beginPath()
+        ctx.moveTo(spider.position.x, spider.position.y + spider.size)
+        ctx.lineTo(spider.position.x - 10, spider.position.y + spider.size + 8)
+        ctx.stroke()
+
+        ctx.beginPath()
+        ctx.moveTo(spider.position.x + spider.size, spider.position.y + spider.size)
+        ctx.lineTo(spider.position.x + spider.size + 10, spider.position.y + spider.size + 8)
+        ctx.stroke()
+
+        // Draw chewing animation if applicable
+        if (spider.isChewing && spider.targetBlock && spider.targetSections.length > 0) {
+          // Visual indicator for chewing
+          const progress = spider.chewingTime / spider.chewingDuration
+          const chewSize = 4 + Math.sin(progress * Math.PI * 10) * 2
+
+          ctx.fillStyle = "#FFFF00" // Yellow for chewing indicator
+
+          // Draw indicators for all sections being chewed
+          for (const sectionIndex of spider.targetSections) {
+            // Calculate section position
+            const sectionX = spider.targetBlock.x + (sectionIndex % 4) * SECTION_SIZE
+            const sectionY = spider.targetBlock.y + Math.floor(sectionIndex / 4) * SECTION_SIZE
+
+            ctx.fillRect(
+              sectionX + SECTION_SIZE / 2 - chewSize / 2,
+              sectionY + SECTION_SIZE / 2 - chewSize / 2,
+              chewSize,
+              chewSize,
+            )
+          }
+        }
+      })
+
+      // Draw player with glow effect
+      // First draw the glow
+      ctx.save()
+      ctx.shadowBlur = PLAYER_GLOW_RADIUS
+      ctx.shadowColor = GLOW_COLOR
+      
+      // Main player shape
+      ctx.fillStyle = state.player.energized ? "#FF3333" : state.player.color
+      
+      // Draw player as AquaPrime logo
+      const playerCenterX = state.player.position.x + state.player.size / 2
+      const playerCenterY = state.player.position.y + state.player.size / 2
+      
+      // If image is loaded and not broken, draw it; otherwise fallback to a shape
+      if (shipImageRef.current && shipImageRef.current.complete && !shipImageRef.current.src.includes('data:') && shipImageRef.current.naturalWidth > 0) {
+        const size = state.player.size * 1.5 // Make ship slightly larger for better visibility
+        ctx.drawImage(
+          shipImageRef.current,
+          state.player.position.x - size/4,
+          state.player.position.y - size/4,
+          size,
+          size
+        )
+      } else {
+        // Fallback shape if image not loaded
+        ctx.beginPath()
+        ctx.moveTo(playerCenterX, state.player.position.y) // top center
+        ctx.lineTo(state.player.position.x + state.player.size, state.player.position.y + state.player.size) // bottom right
+        ctx.lineTo(playerCenterX, state.player.position.y + state.player.size * 0.85) // bottom middle
+        ctx.lineTo(state.player.position.x, state.player.position.y + state.player.size) // bottom left
+        ctx.closePath()
+        ctx.fill()
+      }
+      
+      // Draw engine flames when moving
+      if (state.keys.left || state.keys.right || state.keys.up || state.keys.down) {
+        ctx.beginPath()
+        const flameHeight = 5 + Math.random() * 5 // Animated flames
+        ctx.fillStyle = `rgba(255, ${Math.floor(100 + Math.random() * 155)}, 0, 0.8)`
+        ctx.moveTo(playerCenterX - 5, state.player.position.y + state.player.size * 0.85)
+        ctx.lineTo(playerCenterX, state.player.position.y + state.player.size * 0.85 + flameHeight)
+        ctx.lineTo(playerCenterX + 5, state.player.position.y + state.player.size * 0.85)
+        ctx.closePath()
+        ctx.fill()
+      }
+      
+      ctx.restore()
+
+      // Draw bullets
+      state.bullets.forEach((bullet) => {
+        if (bullet.isPlasma) {
+          // Draw special blue plasma bullets with larger glow
+          ctx.fillStyle = "#00AAFF"
+          ctx.shadowBlur = 15
+          ctx.shadowColor = "#00AAFF"
+          
+          // Draw additional outer glow for plasma bullets
+          ctx.beginPath()
+          ctx.arc(
+            bullet.position.x + bullet.size / 2,
+            bullet.position.y + bullet.size / 2,
+            bullet.size * 0.8,
+            0,
+            Math.PI * 2
+          )
+          ctx.fillStyle = "rgba(0, 170, 255, 0.6)"
+          ctx.fill()
+        } else {
+          // Draw normal bullets
+          ctx.fillStyle = "#FFFFFF"
+          ctx.shadowBlur = 0
+        }
+        ctx.fillRect(bullet.position.x, bullet.position.y, bullet.size, bullet.size)
+      })
+      
+      // Reset shadow for other elements
+      ctx.shadowBlur = 0
+
+      // Draw game info with modern styling
+      ctx.save()
+      
+      // Don't draw UI elements on canvas - we'll use DOM elements instead
+      ctx.restore()
+
+      // Draw mushrooms (as pixelated eggs)
+      state.mushrooms.forEach((mushroom) => {
+        // Draw each section as a rounded block - collectively creating an egg shape
+        // We'll arrange the sections in a pattern that resembles an egg
+        for (let i = 0; i < 16; i++) {
+          if (mushroom.sections[i]) {
+            const row = Math.floor(i / 4)
+            const col = i % 4
+            
+            // Calculate position with slight offsets to create egg shape
+            // Middle rows are wider than top/bottom rows
+            let offsetX = 0
+            if (row === 1) offsetX = -SECTION_SIZE * 0.1 // Second row slightly wider
+            if (row === 2) offsetX = -SECTION_SIZE * 0.1 // Third row slightly wider
+            
+            const sectionX = mushroom.position.x + col * SECTION_SIZE + offsetX
+            const sectionY = mushroom.position.y + row * SECTION_SIZE
+            
+            // Calculate center of each section
+            const sectionCenterX = sectionX + SECTION_SIZE / 2
+            const sectionCenterY = sectionY + SECTION_SIZE / 2
+
+            // Use a color from the mushroom's color set
+            const colorIndex = (i % 2) + (Math.floor(i / 4) % 2) * 2
+            ctx.fillStyle = mushroom.colorSet[colorIndex % mushroom.colorSet.length]
+            
+            // Draw rounded section - these build up to form the egg shape
+            ctx.beginPath()
+            
+            // Vary the size slightly based on position to create oval egg shape
+            let sizeMultiplier = 1.0
+            // Top and bottom sections slightly smaller
+            if (row === 0) sizeMultiplier = 0.9
+            if (row === 3) sizeMultiplier = 0.9
+            // Edge pieces slightly smaller
+            if (col === 0 || col === 3) sizeMultiplier *= 0.95
+            // Center pieces slightly larger
+            if (col === 1 || col === 2) sizeMultiplier *= 1.05
+            
+            ctx.arc(
+              sectionCenterX,
+              sectionCenterY,
+              (SECTION_SIZE / 2) * sizeMultiplier,
+              0,
+              Math.PI * 2
+            )
+            ctx.fill()
+            
+            // Draw highlight on some blocks for 3D effect
+            if ((col === 1 || col === 2) && row === 1) {
+              ctx.fillStyle = "rgba(255, 255, 255, 0.3)"
+              ctx.beginPath()
+              ctx.arc(
+                sectionCenterX - SECTION_SIZE / 4,
+                sectionCenterY - SECTION_SIZE / 4,
+                SECTION_SIZE / 5,
+                0,
+                Math.PI * 2
+              )
+              ctx.fill()
+            }
+          }
+        }
+      })
+
+      // Update megapede chains
+      state.megapedeChains.forEach((chain) => {
+        chain.update(GAME_WIDTH, GAME_HEIGHT, state.obstacleGrid)
+
+        // Check if any segment reaches bottom or collides with player
+        chain.segments.forEach((segment) => {
+          if (!segment.isAlive) return
+
+          // Check collision with player (using circular collision)
+          const playerCenterX = state.player.position.x + state.player.size / 2
+          const playerCenterY = state.player.position.y + state.player.size / 2
+          const segmentCenterX = segment.position.x + SEGMENT_SIZE / 2
+          const segmentCenterY = segment.position.y + SEGMENT_SIZE / 2
+          const dx = playerCenterX - segmentCenterX
+          const dy = playerCenterY - segmentCenterY
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance < state.player.size / 2 + SEGMENT_SIZE / 2) {
+            if (!state.player.energized) {
+              state.gameOver = true
+            } else {
+              // When energized, destroy the segment instead
+              segment.isAlive = false
+              state.score += 200
+            }
+          }
+        })
+      })
+      
+      // Remove empty chains and segments that are not alive
+      state.megapedeChains = state.megapedeChains
+        .map((chain) => {
+          chain.segments = chain.segments.filter((segment) => segment.isAlive)
+          return chain
+        })
+        .filter((chain) => chain.segments.length > 0)
+
+      // Spawn spiders occasionally
+      const now2 = Date.now()
+      if (now2 - state.lastSpiderSpawnTime > Math.max(2000, 5000 - (state.level - 1) * 300)) {
+        // Maximum spiders scales with level (1-5 spiders)
+        const maxSpiders = Math.min(5, 1 + Math.floor(state.level / 2))
+        
+        // Only spawn if fewer than max spiders for current level
+        if (state.spiders.filter(s => s.isAlive).length < maxSpiders) {
+          const spiderX = Math.random() * (GAME_WIDTH - SPIDER_SIZE * 2) + SPIDER_SIZE
+          const spiderY = BORDER_WIDTH
+          
+          // Create spider with level-appropriate speed
+          const spider = new Spider(
+            { x: spiderX, y: spiderY },
+            1.5, // Base multiplier - actual speed calculated in constructor based on level
+            SPIDER_SIZE
+          )
+          state.spiders.push(spider)
+        }
+        state.lastSpiderSpawnTime = now2
+      }
+
+      // Spawn power-ups periodically
+      const powerUpTime = Date.now()
+      if (powerUpTime - state.lastPowerUpSpawnTime > state.powerUpSpawnRate) {
+        // Create a new plasma power-up at a random position
+        // Spawn power-up in the bottom half of the map (player's area)
+        // Ensure power-up stays within bounds by accounting for its size
+        const powerUpSize = 40
+        const safeMargin = 10 // Extra margin to ensure visibility
+        const powerUpX = BORDER_WIDTH + safeMargin + Math.random() * (GAME_WIDTH - BORDER_WIDTH * 2 - powerUpSize - safeMargin * 2)
+        const powerUpY = GAME_HEIGHT / 2 + safeMargin + Math.random() * (GAME_HEIGHT / 2 - BOTTOM_BORDER_WIDTH - powerUpSize - safeMargin * 2)
+        
+        state.powerUps.push({
+          position: { x: powerUpX, y: powerUpY },
+          size: 40,
+          type: 'plasma',
+          active: true,
+          timeCreated: powerUpTime,
+          pulsePhase: 0
+        })
+        
+        state.lastPowerUpSpawnTime = powerUpTime
+      }
+
+      // Update spiders
+      state.spiders.forEach((spider) => {
+        if (spider.isAlive) {
+          spider.update({ x: GAME_WIDTH, y: GAME_HEIGHT }, state.obstacleGrid, state.mushrooms, state.player.position)
+
+          // Check collision with player
+          if (
+            spider.position.x < state.player.position.x + state.player.size &&
+            spider.position.x + spider.size > state.player.position.x &&
+            spider.position.y < state.player.position.y + state.player.size &&
+            spider.position.y + spider.size > state.player.position.y
+          ) {
+            if (!state.player.energized) {
+              state.gameOver = true
+            } else {
+              // When energized, destroy the spider instead
+              spider.isAlive = false
+              state.score += 300
+            }
+          }
+        }
+      })
+
+      // Remove dead spiders
+      state.spiders = state.spiders.filter((spider) => spider.isAlive)
+
+      // Check if all megapede chains are destroyed
+      if (state.megapedeChains.length === 0) {
+        state.level++
+        setLevel(state.level)
+        initGame()
+      }
+
+      // Update score state
+      if (state.score !== score) {
+        setScore(state.score)
+      }
+
+      animationFrameId = requestAnimationFrame(gameLoop)
+    }
+
+    gameLoop()
+
+    return () => {
+      cancelAnimationFrame(animationFrameId)
+    }
+  }, [gameStarted, score, level])
+
+  // Function to handle window resizing and responsive canvas
+  const handleResize = () => {
+    const canvas = canvasRef.current
+    const container = gameContainerRef.current
+    if (!canvas || !container) return
+    
+    // Get the container width (responsive to screen size)
+    const containerWidth = container.clientWidth
+    
+    // Set a maximum width to prevent the game from getting too large
+    const maxWidth = Math.min(containerWidth, BASE_GAME_WIDTH)
+    
+    // Calculate the height proportionally
+    const aspectRatio = BASE_GAME_HEIGHT / BASE_GAME_WIDTH
+    const height = maxWidth * aspectRatio
+    
+    // Important: Set the logical canvas dimensions to match base dimensions
+    // This ensures game logic uses consistent coordinates
+    canvas.width = BASE_GAME_WIDTH
+    canvas.height = BASE_GAME_HEIGHT
+    
+    // Set display size via CSS for responsive scaling
+    canvas.style.width = `${maxWidth}px`
+    canvas.style.height = `${height}px`
+    
+    // Update game dimensions (keeping logic consistent)
+    GAME_WIDTH = BASE_GAME_WIDTH
+    GAME_HEIGHT = BASE_GAME_HEIGHT
+    SCALE_FACTOR = maxWidth / BASE_GAME_WIDTH
+    
+    // Detect if we're on a mobile device
+    const mobileDetected = window.innerWidth < 768
+    setIsMobile(mobileDetected)
+    setShowControls(mobileDetected)
+  }
+
+  useEffect(() => {
+    // Set up resize handler
+    window.addEventListener('resize', handleResize)
+    
+    // Initial resize
+    setTimeout(handleResize, 100)
+    
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const handleStartGame = () => {
+    setScore(0)
+    setLevel(1)
+    gameStateRef.current.score = 0
+    gameStateRef.current.level = 1
+    initGame()
+  }
+  
+  // Handle fullscreen toggle
+  const toggleFullscreen = () => {
+    if (!gameContainerRef.current) return
+    
+    if (!document.fullscreenElement) {
+      // Enter fullscreen
+      gameContainerRef.current.requestFullscreen().then(() => {
+        setIsFullscreen(true)
+      }).catch((err: Error) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`)
+      })
+    } else {
+      // Exit fullscreen
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false)
+      }).catch((err: Error) => {
+        console.error(`Error attempting to exit fullscreen: ${err.message}`)
+      })
+    }
+  }
+  
+  // Monitor for fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [])
+
+  // Game state values for UI rendering
+  const isEnergized = gameStateRef.current?.player?.energized || false
+  // Calculate energy and plasma values for display
+  const [energyPercentage, setEnergyPercentage] = useState(0)
+  const [energySeconds, setEnergySeconds] = useState(0)
+  const [plasmaPercent, setPlasmaPercent] = useState(0)
+  const [plasmaSeconds, setPlasmaSeconds] = useState(0)
+  
+  // Update energy and plasma values every frame
+  useEffect(() => {
+    if (!gameStarted) return
+    
+    const updateInterval = setInterval(() => {
+      if (!gameStateRef.current) return
+      
+      // Energy percentage and time
+      const newEnergyPercentage = gameStateRef.current.player.energized 
+        ? 100 
+        : Math.min(100, (gameStateRef.current.player.killCount / gameStateRef.current.player.energyThreshold) * 100)
+      
+      const newEnergySeconds = gameStateRef.current.player.energized 
+        ? Math.ceil((gameStateRef.current.player.energyTimer + gameStateRef.current.player.energyDuration - Date.now()) / 1000) 
+        : 0
+      
+      // Plasma percentage and time
+      const newPlasmaPercent = gameStateRef.current.player.plasmaActive 
+        ? (gameStateRef.current.player.plasmaDuration - (Date.now() - gameStateRef.current.player.plasmaTimer)) / gameStateRef.current.player.plasmaDuration * 100 
+        : 0
+      
+      const newPlasmaSeconds = gameStateRef.current.player.plasmaActive 
+        ? Math.ceil((gameStateRef.current.player.plasmaTimer + gameStateRef.current.player.plasmaDuration - Date.now()) / 1000) 
+        : 0
+      
+      setEnergyPercentage(newEnergyPercentage)
+      setEnergySeconds(newEnergySeconds)
+      setPlasmaPercent(newPlasmaPercent)
+      setPlasmaSeconds(newPlasmaSeconds)
+    }, 100) // Update 10 times per second
+    
+    return () => clearInterval(updateInterval)
+  }, [gameStarted])
+  
+  // Auto-start game when component mounts
+  useEffect(() => {
+    // Small delay to ensure the component is fully mounted
+    const timer = setTimeout(() => {
+      handleStartGame()
+    }, 200)
+    
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <div className="fixed inset-0 flex flex-col items-center bg-black overflow-auto" ref={gameContainerRef}>
+      {/* Score and Level Display */}
+      {gameStarted && !gameOver && (
+        <>
+          {/* Tiny energy indicator in top corner */}
+          <div className="absolute top-1 right-1 z-10">
+            <div 
+              className={`w-2 h-2 rounded-full transition-all duration-200 ${energyPercentage >= 100 ? 'bg-yellow-400' : (plasmaPercent > 0 ? 'bg-blue-400' : 'bg-gray-600')}`} 
+            />
+          </div>
+          
+          {/* Tiny energy indicator remains in the top corner */}
+        </>
+      )}
+      
+      {/* Game Over Screen - now moved to canvas section */}
+      
+      {/* Start Game Screen */}
+      {!gameStarted && !gameOver && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 z-20">
+          <div className="text-center text-white">
+            <h2 className="text-3xl font-bold mb-4">Megapede</h2>
+            <p className="text-xl mb-6 px-4">
+              {isMobile ? (
+                <>Use the on-screen controls to play.<br />Destroy the megapede before it reaches you!</>
+              ) : (
+                <>Use arrow keys to move and space to shoot.<br />Destroy the megapede before it reaches the bottom!</>
+              )}
+            </p>
+            <button
+              onClick={handleStartGame}
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full text-lg"
+            >
+              Start Game
+            </button>
+          </div>
+        </div>
+      )}
+      
+      <div className="w-full max-w-xl flex justify-center flex-grow-0 mt-4 relative">
+        <canvas
+          ref={canvasRef}
+          width={BASE_GAME_WIDTH}
+          height={BASE_GAME_HEIGHT}
+          className="bg-black max-w-full h-auto block object-contain"
+          style={{ maxWidth: '100%', maxHeight: '50vh' }}
+        />
+        
+        {/* Game Over screen overlay */}
+        {gameOver && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
+            <div className="text-center text-white">
+              <h2 className="text-3xl font-bold mb-4">Game Over</h2>
+              <p className="text-xl mb-6">Final Score: {score}</p>
+              <button
+                onClick={handleStartGame}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full text-lg"
+              >
+                Play Again
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Score and level are now drawn directly on the canvas */}
+      </div>
+      
+      {/* Mobile Game Controls - Game Boy style below the canvas */}
+      {isMobile && gameStarted && !gameOver && (
+        <div className="mt-8 bg-gray-800 p-6 w-full overflow-visible border-t-4 border-gray-900 flex-grow">
+          {/* Controls toggle button */}
+          <div className="flex justify-center mb-4 relative">
+            <button 
+              className="bg-gray-700 text-white px-4 py-1 rounded-md text-sm"
+              onClick={() => setShowControls(!showControls)}
+            >
+              {showControls ? 'Hide Controls' : 'Show Controls'}
+            </button>
+            
+            {/* Auto-shoot indicator */}
+            {gameStateRef.current.autoShootEnabled && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-red-600 rounded-full w-3 h-3"></div>
+            )}
+          </div>
+          
+          {/* Game Controls - only shown when enabled */}
+          {showControls && (
+            <div className="flex justify-between items-center py-4 px-4 overflow-visible">
+              {/* Game Boy style D-Pad - left side */}
+              <div className="relative w-32 h-32">
+                {/* D-pad cross base */}
+                <div className="absolute w-24 h-24 bg-gray-900 rounded-md left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute w-8 h-28 bg-gray-700 rounded-sm left-1/2 top-0 -translate-x-1/2"></div>
+                <div className="absolute w-28 h-8 bg-gray-700 rounded-sm left-0 top-1/2 -translate-y-1/2"></div>
+                
+                {/* Up Button */}
+                <button 
+                  className="absolute w-14 h-14 top-0 left-1/2 -translate-x-1/2 flex items-center justify-center text-white text-xl"
+                  onTouchStart={() => window.handleTouchStart('up')}
+                  onTouchEnd={() => window.handleTouchEnd('up')}
+                  onMouseDown={() => window.handleTouchStart('up')}
+                  onMouseUp={() => window.handleTouchEnd('up')}
+                  onMouseLeave={() => window.handleTouchEnd('up')}
+                >
+                  ↑
+                </button>
+                
+                {/* Left Button */}
+                <button 
+                  className="absolute w-14 h-14 left-0 top-1/2 -translate-y-1/2 flex items-center justify-center text-white text-xl"
+                  onTouchStart={() => window.handleTouchStart('left')}
+                  onTouchEnd={() => window.handleTouchEnd('left')}
+                  onMouseDown={() => window.handleTouchStart('left')}
+                  onMouseUp={() => window.handleTouchEnd('left')}
+                  onMouseLeave={() => window.handleTouchEnd('left')}
+                >
+                  ←
+                </button>
+                
+                {/* Center button (non-functional) */}
+                <div className="absolute w-8 h-8 bg-gray-800 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+                
+                {/* Right Button */}
+                <button 
+                  className="absolute w-14 h-14 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center text-white text-xl"
+                  onTouchStart={() => window.handleTouchStart('right')}
+                  onTouchEnd={() => window.handleTouchEnd('right')}
+                  onMouseDown={() => window.handleTouchStart('right')}
+                  onMouseUp={() => window.handleTouchEnd('right')}
+                  onMouseLeave={() => window.handleTouchEnd('right')}
+                >
+                  →
+                </button>
+                
+                {/* Down Button */}
+                <button 
+                  className="absolute w-14 h-14 bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-center text-white text-xl"
+                  onTouchStart={() => window.handleTouchStart('down')}
+                  onTouchEnd={() => window.handleTouchEnd('down')}
+                  onMouseDown={() => window.handleTouchStart('down')}
+                  onMouseUp={() => window.handleTouchEnd('down')}
+                  onMouseLeave={() => window.handleTouchEnd('down')}
+                >
+                  ↓
+                </button>
+              </div>
+              
+              {/* Shoot Button - Game Boy A/B button style - right side */}
+              <div className="flex items-center justify-center">
+                <div className="-rotate-12 transform-gpu">
+                  <button 
+                    className="w-20 h-20 rounded-full bg-red-600 text-white flex items-center justify-center text-sm font-bold border-2 border-red-800 shadow-inner"
+                    onTouchStart={() => window.handleTouchStart('shoot')}
+                    onTouchEnd={() => window.handleTouchEnd('shoot')}
+                    onMouseDown={() => window.handleTouchStart('shoot')}
+                    onMouseUp={() => window.handleTouchEnd('shoot')}
+                    onMouseLeave={() => window.handleTouchEnd('shoot')}
+                  >
+                    {gameStateRef.current.autoShootEnabled ? 'AUTO' : 'A'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

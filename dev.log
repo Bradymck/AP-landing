@@ -1,0 +1,26 @@
+   ▲ Next.js 14.0.4
+   - Local:        http://localhost:3000
+   - Experiments (use at your own risk):
+     · outputFileTracingRoot
+
+ ✓ Ready in 1018ms
+ ○ Compiling /not-found ...
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled /not-found in 1293ms (460 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 134ms (237 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 2.7s (3846 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 910ms (3860 modules)
+ ✓ Compiled in 864ms (3859 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled /not-found in 211ms (1924 modules)
+ ✓ Compiled in 318ms (3862 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 467ms (3859 modules)
+ ✓ Compiled /not-found in 85ms (1924 modules)
+ ✓ Compiled in 351ms (3862 modules)

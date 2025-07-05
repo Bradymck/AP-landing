@@ -3,130 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - AquaPrime</title>
+    <title>Megapede - Portable 404 Game</title>
     <style>
-        /* Embedded styles for portability */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(to bottom, #1e3a8a, #581c87, #1e3a8a);
+            font-family: Arial, sans-serif;
+            background: #000;
             color: white;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            overflow-x: hidden;
+            overflow: hidden;
             user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
-        
-        .container {
-            max-width: 28rem;
-            background: rgba(30, 58, 138, 0.6);
-            padding: 2rem;
-            border-radius: 1rem;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            border: 1px solid rgba(59, 130, 246, 0.5);
-            position: relative;
-            z-index: 10;
-            text-align: center;
-        }
-        
-        .badge-404 {
-            position: absolute;
-            top: -1.5rem;
-            right: -1.5rem;
-            background: #dc2626;
-            color: white;
-            font-size: 1.25rem;
-            font-weight: bold;
-            border-radius: 50%;
-            width: 3.5rem;
-            height: 3.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid white;
-            transform: rotate(12deg);
-            cursor: pointer;
-            transition: transform 0.2s;
-            user-select: none;
-        }
-        
-        .badge-404:hover {
-            transform: rotate(12deg) scale(1.1);
-        }
-        
-        .lost-ari {
-            width: 6rem;
-            height: 6rem;
-            border-radius: 0.5rem;
-            margin: 0 auto 1.5rem;
-            display: block;
-        }
-        
-        .title {
-            font-size: 2.25rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            color: white;
-        }
-        
-        .subtitle {
-            font-size: 1.25rem;
-            margin-bottom: 1rem;
-            font-weight: 500;
-            color: #dbeafe;
-        }
-        
-        .description {
-            color: #bfdbfe;
-            margin-bottom: 1.5rem;
-            line-height: 1.6;
-        }
-        
-        .quote {
-            color: #67e8f9;
-            font-size: 0.875rem;
-            margin-bottom: 2rem;
-            font-style: italic;
-        }
-        
-        .click-hint {
-            color: #67e8f9;
-            font-size: 0.875rem;
-            margin-bottom: 1rem;
-            animation: pulse 2s infinite;
-        }
-        
-        .home-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem 2rem;
-            font-weight: bold;
-            background: #2563eb;
-            border-radius: 0.5rem;
-            color: white;
-            text-decoration: none;
-            transition: background-color 0.2s;
-            border: none;
-            cursor: pointer;
-            margin: 0.25rem;
-        }
-        
-        .home-button:hover {
-            background: #1d4ed8;
-        }
-        
-        .game-container {
+
+        #gameContainer {
             position: fixed;
             top: 0;
             left: 0;
@@ -137,45 +33,8 @@
             align-items: center;
             justify-content: center;
             background: #000;
-            z-index: 1000;
         }
-        
-        .game-header {
-            text-align: center;
-            margin-bottom: 1rem;
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-        }
-        
-        .game-title {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #67e8f9;
-            margin-bottom: 0.5rem;
-        }
-        
-        .game-subtitle {
-            color: #a5f3fc;
-            margin-bottom: 1rem;
-        }
-        
-        .back-button {
-            font-size: 0.875rem;
-            color: #60a5fa;
-            background: none;
-            border: none;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-bottom: 1rem;
-        }
-        
-        .back-button:hover {
-            color: #93c5fd;
-        }
-        
+
         #gameCanvas {
             background: #000;
             border: 2px solid #4D88FF;
@@ -201,7 +60,7 @@
             display: none;
         }
 
-        .game-button {
+        button {
             background: #4D88FF;
             color: white;
             border: none;
@@ -210,10 +69,9 @@
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.3s;
-            margin: 0.25rem;
         }
 
-        .game-button:hover {
+        button:hover {
             background: #3366CC;
         }
 
@@ -326,25 +184,7 @@
             background: #00AAFF;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
         @media (max-width: 768px) {
-            .container {
-                max-width: 20rem;
-                padding: 1.5rem;
-            }
-            
-            .title {
-                font-size: 1.875rem;
-            }
-            
-            .subtitle {
-                font-size: 1.125rem;
-            }
-            
             .controls {
                 display: none;
             }
@@ -358,136 +198,49 @@
     </style>
 </head>
 <body>
-    <div id="app">
-        <!-- 404 Content -->
-        <div id="not-found-content" class="container">
-            <div class="badge-404" onclick="handleSecretClick()" title="Something's hidden here... 🤔">
-                404
-            </div>
-            
-            <!-- Lost ARI Animation -->
-            <img src="./lost.gif" 
-                 alt="Lost ARI Platypus" 
-                 class="lost-ari"
-                 id="lost-ari-gif">
-            
-            <h1 class="title">404</h1>
-            
-            <p class="subtitle">
-                Oops! This platypus has wandered too far from home
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <!-- Energy Indicator -->
+        <div id="energyIndicator" class="energy-indicator"></div>
+        
+        <!-- Start Screen -->
+        <div id="startScreen" class="overlay">
+            <h1 style="font-size: 48px; margin-bottom: 20px; color: #4D88FF;">Megapede</h1>
+            <p style="font-size: 18px; margin-bottom: 30px; text-align: center; max-width: 600px;">
+                Defend against the alien megapede invasion! Use arrow keys to move and spacebar to shoot.<br>
+                Destroy the megapede before it reaches the bottom!
             </p>
-            
-            <p class="description">
-                Even our most experienced AquaPrime navigator can't find this page in the vast digital ocean. 
-                Our little platypus friend here seems just as confused as you are!
-            </p>
-            
-            <p class="quote">
-                "I was just looking for some digital kelp and got completely turned around..." - Lost Platypus
-            </p>
-
-            <div id="click-hint" class="click-hint" style="display: none;">
-                🤔 <span id="clicks-remaining">7</span> more clicks...
-            </div>
-            
-            <a href="/" class="home-button">
-                Return to Home Waters
-            </a>
+            <button onclick="startGame()">Start Game</button>
         </div>
         
-        <!-- Game Content -->
-        <div id="game-content" class="game-container" style="display: none;">
-            <div class="game-header">
-                <h2 class="game-title">🎮 Secret Discovered!</h2>
-                <p class="game-subtitle">You found the hidden ACTUAL AquaPrime Megapede game!</p>
-                <button class="back-button" onclick="showNotFound()">
-                    ← Back to 404
-                </button>
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="overlay hidden">
+            <h1 style="font-size: 48px; margin-bottom: 20px; color: #FF4444;">Game Over</h1>
+            <p id="finalScore" style="font-size: 24px; margin-bottom: 30px;"></p>
+            <button onclick="startGame()">Play Again</button>
+        </div>
+        
+        <!-- Desktop Controls -->
+        <div class="controls">
+            <div style="font-size: 14px; text-align: center;">
+                Arrow Keys: Move | Spacebar: Shoot
             </div>
-            
-            <canvas id="gameCanvas" width="800" height="600"></canvas>
-            
-            <!-- Energy Indicator -->
-            <div id="energyIndicator" class="energy-indicator"></div>
-            
-            <!-- Start Screen -->
-            <div id="startScreen" class="overlay">
-                <h1 style="font-size: 48px; margin-bottom: 20px; color: #4D88FF;">AquaPrime Megapede</h1>
-                <p style="font-size: 18px; margin-bottom: 30px; text-align: center; max-width: 600px;">
-                    Defend against the alien megapede invasion! Use arrow keys to move and spacebar to shoot.<br>
-                    Destroy the megapede before it reaches the bottom!
-                </p>
-                <button onclick="startGame()" class="game-button">Start Game</button>
+        </div>
+        
+        <!-- Mobile Controls -->
+        <div class="mobile-controls">
+            <div class="dpad">
+                <button class="dpad-button dpad-up" onmousedown="handleInput('up', true)" onmouseup="handleInput('up', false)" ontouchstart="handleInput('up', true)" ontouchend="handleInput('up', false)">↑</button>
+                <button class="dpad-button dpad-down" onmousedown="handleInput('down', true)" onmouseup="handleInput('down', false)" ontouchstart="handleInput('down', true)" ontouchend="handleInput('down', false)">↓</button>
+                <button class="dpad-button dpad-left" onmousedown="handleInput('left', true)" onmouseup="handleInput('left', false)" ontouchstart="handleInput('left', true)" ontouchend="handleInput('left', false)">←</button>
+                <button class="dpad-button dpad-right" onmousedown="handleInput('right', true)" onmouseup="handleInput('right', false)" ontouchstart="handleInput('right', true)" ontouchend="handleInput('right', false)">→</button>
             </div>
-            
-            <!-- Game Over Screen -->
-            <div id="gameOverScreen" class="overlay hidden">
-                <h1 style="font-size: 48px; margin-bottom: 20px; color: #FF4444;">Game Over</h1>
-                <p id="finalScore" style="font-size: 24px; margin-bottom: 30px;"></p>
-                <button onclick="startGame()" class="game-button">Play Again</button>
-            </div>
-            
-            <!-- Desktop Controls -->
-            <div class="controls">
-                <div style="font-size: 14px; text-align: center;">
-                    Arrow Keys: Move | Spacebar: Shoot
-                </div>
-            </div>
-            
-            <!-- Mobile Controls -->
-            <div class="mobile-controls">
-                <div class="dpad">
-                    <button class="dpad-button dpad-up" onmousedown="handleInput('up', true)" onmouseup="handleInput('up', false)" ontouchstart="handleInput('up', true)" ontouchend="handleInput('up', false)">↑</button>
-                    <button class="dpad-button dpad-down" onmousedown="handleInput('down', true)" onmouseup="handleInput('down', false)" ontouchstart="handleInput('down', true)" ontouchend="handleInput('down', false)">↓</button>
-                    <button class="dpad-button dpad-left" onmousedown="handleInput('left', true)" onmouseup="handleInput('left', false)" ontouchstart="handleInput('left', true)" ontouchend="handleInput('left', false)">←</button>
-                    <button class="dpad-button dpad-right" onmousedown="handleInput('right', true)" onmouseup="handleInput('right', false)" ontouchstart="handleInput('right', true)" ontouchend="handleInput('right', false)">→</button>
-                </div>
-                <button class="shoot-button" onmousedown="handleInput('shoot', true)" onmouseup="handleInput('shoot', false)" ontouchstart="handleInput('shoot', true)" ontouchend="handleInput('shoot', false)">FIRE</button>
-            </div>
-            
-            <div style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 15;">
-                <a href="/" class="home-button">
-                    Return to Home Waters
-                </a>
-            </div>
+            <button class="shoot-button" onmousedown="handleInput('shoot', true)" onmouseup="handleInput('shoot', false)" ontouchstart="handleInput('shoot', true)" ontouchend="handleInput('shoot', false)">FIRE</button>
         </div>
     </div>
 
     <script>
-        // Global state for 404 page
-        let clickCount = 0;
-
-        // Secret click handler
-        function handleSecretClick() {
-            clickCount++;
-            const clickHint = document.getElementById('click-hint');
-            const clicksRemaining = document.getElementById('clicks-remaining');
-            
-            if (clickCount < 7) {
-                clickHint.style.display = 'block';
-                clicksRemaining.textContent = 7 - clickCount;
-            } else {
-                showGame();
-            }
-        }
-        
-        // Show/hide functions
-        function showNotFound() {
-            document.getElementById('not-found-content').style.display = 'block';
-            document.getElementById('game-content').style.display = 'none';
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-            }
-        }
-        
-        function showGame() {
-            document.getElementById('not-found-content').style.display = 'none';
-            document.getElementById('game-content').style.display = 'block';
-            initializeGameState();
-        }
-
-        // YOUR ACTUAL SOPHISTICATED MEGAPEDE GAME STARTS HERE
-        
         // Game constants
         const BASE_GAME_WIDTH = 800;
         const BASE_GAME_HEIGHT = 600;
@@ -593,6 +346,8 @@
         let animationId;
 
         // Input handling
+        const keys = {};
+
         function handleInput(action, pressed) {
             if (action === 'shoot' && pressed) {
                 gameState.autoShootEnabled = !gameState.autoShootEnabled;
@@ -1312,14 +1067,9 @@
             CURRENT_GAME_LEVEL = gameState.level;
         }
 
-        function initializeGameState() {
+        function startGame() {
             gameState.score = 0;
             gameState.level = 1;
-            document.getElementById('startScreen').classList.remove('hidden');
-            document.getElementById('gameOverScreen').classList.add('hidden');
-        }
-
-        function startGame() {
             document.getElementById('startScreen').classList.add('hidden');
             document.getElementById('gameOverScreen').classList.add('hidden');
             initGame();
@@ -2187,19 +1937,15 @@
         // Resize canvas on window resize
         function resizeCanvas() {
             const container = document.getElementById('gameContainer');
-            if (!container) return;
-            
-            const containerWidth = window.innerWidth;
+            const containerWidth = container.clientWidth;
             const maxWidth = Math.min(containerWidth, BASE_GAME_WIDTH);
             const aspectRatio = BASE_GAME_HEIGHT / BASE_GAME_WIDTH;
             const height = maxWidth * aspectRatio;
             
-            if (canvas) {
-                canvas.width = BASE_GAME_WIDTH;
-                canvas.height = BASE_GAME_HEIGHT;
-                canvas.style.width = `${maxWidth}px`;
-                canvas.style.height = `${height}px`;
-            }
+            canvas.width = BASE_GAME_WIDTH;
+            canvas.height = BASE_GAME_HEIGHT;
+            canvas.style.width = `${maxWidth}px`;
+            canvas.style.height = `${height}px`;
             
             GAME_WIDTH = BASE_GAME_WIDTH;
             GAME_HEIGHT = BASE_GAME_HEIGHT;
@@ -2209,6 +1955,8 @@
         // Initialize game on page load
         window.addEventListener('load', () => {
             resizeCanvas();
+            // Show start screen
+            document.getElementById('startScreen').classList.remove('hidden');
         });
 
         window.addEventListener('resize', resizeCanvas);

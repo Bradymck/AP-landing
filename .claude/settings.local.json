@@ -7,7 +7,16 @@
       "Bash(npm run build:*)",
       "Bash(curl:*)",
       "Bash(pkill:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npm run dev:*)",
+      "Bash(HOST=localhost PORT=3000 npm run dev)",
+      "Bash(diff:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(sed:*)",
+      "Bash(node:*)",
+      "Bash(true)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }
