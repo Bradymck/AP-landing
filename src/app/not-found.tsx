@@ -26,20 +26,24 @@ export default function NotFound() {
 
   if (showGame) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-800 via-purple-900 to-blue-800 text-white flex flex-col items-center justify-start p-4">
-        <div className="w-full max-w-4xl mx-auto">
-          <div className="text-center mb-4">
-            <h2 className="text-2xl font-bold text-cyan-300 mb-2">🎮 Secret Discovered!</h2>
-            <p className="text-cyan-200 mb-4">You found the hidden ACTUAL AquaPrime Megapede game!</p>
+      <div className="min-h-screen bg-gradient-to-b from-blue-800 via-purple-900 to-blue-800 text-white">
+        {/* Fixed header that stays on top */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-blue-900 bg-opacity-95 p-4 border-b border-cyan-400">
+          <div className="text-center max-w-4xl mx-auto">
+            <h2 className="text-xl font-bold text-cyan-300 mb-1">🎮 Secret Discovered!</h2>
+            <p className="text-cyan-200 text-sm mb-2">You found the hidden ACTUAL AquaPrime Megapede game!</p>
             <button 
-              className="text-sm text-blue-400 underline hover:text-blue-300 mb-4"
+              className="text-xs text-blue-400 underline hover:text-blue-300"
               onClick={() => setShowGame(false)}
             >
               ← Back to 404
             </button>
           </div>
-          
-          <div className="mb-4">
+        </div>
+        
+        {/* Game container with top padding to account for fixed header */}
+        <div className="pt-24 p-4 flex flex-col items-center justify-start">
+          <div className="w-full max-w-4xl mx-auto">
             <MegapedeGame />
           </div>
           

@@ -2319,7 +2319,7 @@ export default function MegapedeGame() {
   // User needs to manually start the game
 
   return (
-    <div className="relative w-full flex flex-col items-center bg-black overflow-auto rounded-lg border-2 border-cyan-300 p-2" ref={gameContainerRef}>
+    <div className="relative w-full flex flex-col items-center bg-black overflow-auto rounded-lg border-2 border-cyan-300 p-2 z-10" ref={gameContainerRef}>
       {/* Score and Level Display */}
       {gameStarted && !gameOver && (
         <>
@@ -2338,7 +2338,7 @@ export default function MegapedeGame() {
       
       {/* Start Game Screen */}
       {!gameStarted && !gameOver && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 z-20">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-30">
           <div className="text-center text-white">
             <h2 className="text-3xl font-bold mb-4">Megapede</h2>
             <p className="text-xl mb-6 px-4">
