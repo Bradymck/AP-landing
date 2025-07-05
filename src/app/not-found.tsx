@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
-// Dynamically import the MegapedeGame component to avoid SSR issues
-const MegapedeGame = dynamic(() => import('./components/megapede-game'), {
+// Dynamically import the MolochGame component to avoid SSR issues
+const MolochGame = dynamic(() => import('./components/megapede-game'), {
   ssr: false,
   loading: () => <div className="text-cyan-300">Loading game...</div>
 });
@@ -36,7 +36,7 @@ export default function NotFound() {
         </button>
         
         {/* Fullscreen game */}
-        <MegapedeGame />
+        <MolochGame />
       </div>
     );
   }

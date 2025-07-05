@@ -54,6 +54,16 @@ class SoundManager {
         const audio = new Audio(`/sfx/intros/${file}`)
         audio.preload = 'auto'
         audio.volume = this.sfxVolume
+        
+        // Add load event listener
+        audio.addEventListener('canplaythrough', () => {
+          console.log(`Intro sound ready: ${file}`)
+        })
+        
+        audio.addEventListener('error', (e) => {
+          console.warn(`Failed to load intro sound: ${file}`)
+        })
+        
         this.introSounds.push(audio)
       } catch (error) {
         console.warn(`Could not load intro sound: ${file}`, error)
@@ -127,23 +137,36 @@ class SoundManager {
     }
   }
 
-  play(soundName: string) {
+  play(soundName: string, volumeMultiplier: number = 1.0) {
     if (this.muted) return
     
     const sound = this.sounds[soundName]
     if (sound) {
       try {
+        // Adjust volume temporarily if needed
+        const originalVolume = sound.volume
+        sound.volume = originalVolume * volumeMultiplier
+        
         // Simple approach: reset and play original audio
         sound.currentTime = 0
         const playPromise = sound.play()
         
         if (playPromise !== undefined) {
-          playPromise.catch(e => {
-            // Silently handle autoplay policy errors
-            if (e.name !== 'NotAllowedError') {
-              console.warn(`Could not play sound: ${soundName}`, e)
-            }
-          })
+          playPromise
+            .then(() => {
+              // Reset volume after a short delay
+              setTimeout(() => {
+                sound.volume = originalVolume
+              }, 100)
+            })
+            .catch(e => {
+              // Reset volume on error too
+              sound.volume = originalVolume
+              // Silently handle autoplay policy errors
+              if (e.name !== 'NotAllowedError') {
+                console.warn(`Could not play sound: ${soundName}`, e)
+              }
+            })
         }
       } catch (error) {
         console.warn(`Error playing sound: ${soundName}`, error)
@@ -209,27 +232,33 @@ class SoundManager {
     this.currentMusic = this.musicTracks[trackIndex]
     this.currentMusicIndex = trackIndex
     
-    // Starting background music
+    console.log(`Attempting to start music track ${trackIndex + 1} for level ${level}`)
     
     try {
-      // Ensure the audio is ready
+      // Reset and configure the audio
+      this.currentMusic.currentTime = 0
+      this.currentMusic.loop = true
+      
+      // Check if audio is ready to play
       if (this.currentMusic.readyState >= 2) { // HAVE_CURRENT_DATA or higher
-        this.currentMusic.currentTime = 0
-        this.currentMusic.loop = true
-        
+        console.log('Music ready, starting playback')
         const playPromise = this.currentMusic.play()
         if (playPromise) {
           playPromise
             .then(() => {
-              // Background music playing successfully
+              console.log(`Music playing successfully: Track ${trackIndex + 1}`)
             })
             .catch(e => {
               if (e.name !== 'NotAllowedError') {
                 console.warn('Could not play background music:', e)
                 // Try again after a delay
                 setTimeout(() => {
-                  this.currentMusic?.play().catch(() => {})
-                }, 500)
+                  if (this.currentMusic) {
+                    this.currentMusic.play().catch((e2) => {
+                      console.warn('Retry music play failed:', e2)
+                    })
+                  }
+                }, 1000)
               }
             })
         }
@@ -237,6 +266,7 @@ class SoundManager {
         console.warn('Music not ready, waiting for load...')
         this.currentMusic.addEventListener('canplaythrough', () => {
           if (this.currentMusic) {
+            console.log('Music loaded, starting delayed playback')
             this.currentMusic.currentTime = 0
             this.currentMusic.loop = true
             this.currentMusic.play().catch(e => {
@@ -372,11 +402,11 @@ const SPIDER_SIZE = 20
 const PARTICLE_COUNT = 8 // Reduced for performance optimization
 
 // Enemy scaling constants
-const BASE_MEGAPEDE_SPEED = 1.0 // Base speed for level 1
-const BASE_SPIDER_SPEED = 0.8 // Base spider speed for level 1
+const BASE_MOLOCH_SPEED = 0.6 // Base speed for level 1 (reduced from 1.0)
+const BASE_SPIDER_SPEED = 0.5 // Base spider speed for level 1 (reduced from 0.8)
 const SPEED_INCREASE_PER_LEVEL = 0.1 // Speed increases by this amount per level
-const BASE_SEGMENT_COUNT = 20 // Base megapede length for level 1
-const SEGMENTS_INCREASE_LEVEL = 3 // Megapede grows longer every X levels
+const BASE_SEGMENT_COUNT = 20 // Base Moloch centipede length for level 1
+const SEGMENTS_INCREASE_LEVEL = 3 // Moloch centipede grows longer every X levels
 
 // Visual enhancement constants
 const GLOW_COLOR = "rgba(0, 255, 255, 0.7)" // Cyan glow for player and bullets
@@ -400,7 +430,7 @@ const EGG_COLORS = [
   ["#FF6347", "#FF4500", "#FF7F50", "#FFA07A"], // Red/orange variants
 ]
 
-// Emoji heads for megapede
+// Emoji heads for Moloch centipede
 const EMOJI_HEADS = [
   "👹",
 ]
@@ -470,7 +500,7 @@ type Mushroom = {
   sections: boolean[] // 16 sections (4x4 grid)
 }
 
-class MegapedeSegment {
+class MolochSegment {
   position: Vector2
   direction: number // +1 = right, -1 = left
   stepSize: number // in pixels (e.g., tile size)
@@ -554,9 +584,9 @@ class MegapedeSegment {
     }
   }
 
-  takeDamage() {
+  takeDamage(damage: number = 1) {
     if (this.isArmored) {
-      this.armorLevel -= 1
+      this.armorLevel -= damage
       if (this.armorLevel <= 0) {
         // When armor is depleted, immediately destroy the segment
         this.isArmored = false
@@ -565,15 +595,15 @@ class MegapedeSegment {
       }
       return { destroyed: false, hitArmor: true } // Armor took the hit, segment still alive
     } else {
-      // Unarmored segments die with a single hit
+      // Unarmored segments die with a single hit (damage doesn't matter for unarmored)
       this.isAlive = false
       return { destroyed: true, hitArmor: false } // Segment is destroyed
     }
   }
 }
 
-class MegapedeChain {
-  segments: MegapedeSegment[]
+class MolochChain {
+  segments: MolochSegment[]
   delay: number // time between updates per segment
   stepSize: number
   lastUpdateTime: number
@@ -583,11 +613,11 @@ class MegapedeChain {
     startPosition: Vector2,
     direction: number,
     segmentSize: number,
-    speed: number = BASE_MEGAPEDE_SPEED,
+    speed: number = BASE_MOLOCH_SPEED,
   ) {
     // Scale speed based on level
     const level = CURRENT_GAME_LEVEL || 1
-    speed = BASE_MEGAPEDE_SPEED + (level - 1) * SPEED_INCREASE_PER_LEVEL
+    speed = BASE_MOLOCH_SPEED + (level - 1) * SPEED_INCREASE_PER_LEVEL
     this.stepSize = CURRENT_GAME_LEVEL === 1 ? segmentSize * 0.7 : segmentSize
     this.segments = []
     
@@ -609,7 +639,7 @@ class MegapedeChain {
         segmentPos.x -= i * segmentSize * direction
       }
 
-      const segment = new MegapedeSegment(segmentPos, direction, segmentSize, isHead)
+      const segment = new MolochSegment(segmentPos, direction, segmentSize, isHead)
       
       // Set the emoji for head segments using the level's emoji
       if (isHead) {
@@ -662,7 +692,7 @@ class MegapedeChain {
   }
 
   // Create a new chain from segments starting at index
-  createNewChainFromSegments(index: number): MegapedeChain | null {
+  createNewChainFromSegments(index: number): MolochChain | null {
     if (index <= 0 || index >= this.segments.length) return null
 
     // Get segments for the new chain
@@ -685,13 +715,13 @@ class MegapedeChain {
     // Create a new chain with these segments
     // Create a new chain with these segments
     // The speed will be controlled by the global CURRENT_GAME_LEVEL variable
-    const newChain = new MegapedeChain(0, { x: 0, y: 0 }, newSegments[0].direction, this.stepSize)
+    const newChain = new MolochChain(0, { x: 0, y: 0 }, newSegments[0].direction, this.stepSize)
     newChain.segments = newSegments
 
     return newChain
   }
 
-  splitAt(index: number): MegapedeChain[] {
+  splitAt(index: number): MolochChain[] {
     if (index <= 0 || index >= this.segments.length) return [this]
 
     const leftSegments = this.segments.slice(0, index)
@@ -705,10 +735,10 @@ class MegapedeChain {
     }
 
     // Create new chains from the segments
-    const chains: MegapedeChain[] = []
+    const chains: MolochChain[] = []
 
     if (leftSegments.length > 0) {
-      const leftChain = new MegapedeChain(0, { x: 0, y: 0 }, 1, this.stepSize)
+      const leftChain = new MolochChain(0, { x: 0, y: 0 }, 1, this.stepSize)
       leftChain.segments = leftSegments
       // Carry over the delay from the parent chain to maintain speed consistency
       leftChain.delay = this.delay
@@ -716,7 +746,7 @@ class MegapedeChain {
     }
 
     if (rightSegments.length > 0) {
-      const rightChain = new MegapedeChain(0, { x: 0, y: 0 }, 1, this.stepSize)
+      const rightChain = new MolochChain(0, { x: 0, y: 0 }, 1, this.stepSize)
       rightChain.segments = rightSegments
       // Carry over the delay from the parent chain to maintain speed consistency
       rightChain.delay = this.delay
@@ -1142,7 +1172,7 @@ class Spider {
   }
 }
 
-export default function MegapedeGame() {
+export default function MolochGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const gameContainerRef = useRef<HTMLDivElement | null>(null)
   const [gameStarted, setGameStarted] = useState(false)
@@ -1169,7 +1199,7 @@ export default function MegapedeGame() {
       energized: false,
       energyTimer: 0,
       killCount: 0,
-      energyThreshold: 10,
+      energyThreshold: 20,
       energyDuration: 5000,
       plasmaAmmo: 0,
       plasmaActive: false,
@@ -1177,7 +1207,7 @@ export default function MegapedeGame() {
       plasmaDuration: 5000,
     } as Player,
     bullets: [] as Bullet[],
-    megapedeChains: [] as MegapedeChain[],
+    molochChains: [] as MolochChain[],
     spiders: [] as Spider[],
     mushrooms: [] as Mushroom[],
     particles: [] as Particle[],
@@ -1197,6 +1227,7 @@ export default function MegapedeGame() {
     spiderSpawnRate: 10000,
     lastPowerUpSpawnTime: 0,
     powerUpSpawnRate: 45000, // Increased from 15000 to 45000 (45 seconds) to make power-ups more rare
+    spiderKillCount: 0, // Track spider kills for power-up spawning
     lastMushroomSpawnTime: 0,
     mushroomSpawnRate: 3000,
     score: 0,
@@ -1303,7 +1334,7 @@ export default function MegapedeGame() {
       energized: false,
       energyTimer: 0,
       killCount: 0,
-      energyThreshold: 10, // Number of kills needed to get energy
+      energyThreshold: 20, // Number of kills needed to get energy
       energyDuration: 5000, // 5 seconds of energized mode
       plasmaAmmo: 0,
       plasmaActive: false,
@@ -1313,7 +1344,7 @@ export default function MegapedeGame() {
     state.bullets = []
     state.mushrooms = []
     state.particles = []
-    state.megapedeChains = []
+    state.molochChains = []
     state.spiders = []
     state.powerUps = []
     state.obstacleGrid = new Set()
@@ -1322,7 +1353,7 @@ export default function MegapedeGame() {
     state.lastUpdateTime = Date.now()
     state.lastSpiderSpawnTime = Date.now()
     
-    // Choose a random emoji for this level's megapede and update global variables
+    // Choose a random emoji for this level's Moloch centipede and update global variables
     state.levelEmoji = EMOJI_HEADS[Math.floor(Math.random() * EMOJI_HEADS.length)]
     CURRENT_LEVEL_EMOJI = state.levelEmoji // Update the global emoji variable
     CURRENT_GAME_LEVEL = state.level     // Update the global level variable
@@ -1344,7 +1375,7 @@ export default function MegapedeGame() {
       createMushroom(mushroomX, mushroomY)
     }
 
-    // Create megapede chain with length based on level
+    // Create Moloch centipede chain with length based on level
     // Base length + bonus segments every SEGMENTS_INCREASE_LEVEL levels
     // Add one segment for every level instead of 4 segments every few levels
     const bonusSegments = state.level - 1 // One extra segment per level
@@ -1354,10 +1385,10 @@ export default function MegapedeGame() {
     const direction = startX === BORDER_WIDTH ? 1 : -1
     const startY = SEGMENT_SIZE + BORDER_WIDTH
 
-    // The megapede constructor will use the global CURRENT_GAME_LEVEL variable
-    const megapedeChain = new MegapedeChain(segmentCount, { x: startX, y: startY }, direction, SEGMENT_SIZE)
+    // The Moloch centipede constructor will use the global CURRENT_GAME_LEVEL variable
+    const molochChain = new MolochChain(segmentCount, { x: startX, y: startY }, direction, SEGMENT_SIZE)
 
-    state.megapedeChains.push(megapedeChain)
+    state.molochChains.push(molochChain)
 
     // Reset timers
     state.lastSpiderSpawnTime = Date.now()
@@ -1776,9 +1807,9 @@ export default function MegapedeGame() {
                 createMushroomParticles(mushroom.position, i, mushroom.colorSet)
                 state.score += 1
                 
-                // Play block destroy sound
+                // Play block destroy sound at lower volume
                 if (soundManager) {
-                  soundManager.play('block-destroy')
+                  soundManager.play('block-destroy', 0.3)
                 }
               }
             }
@@ -1919,9 +1950,9 @@ export default function MegapedeGame() {
                   mushroom.sections[adjacentSectionIndex] = false
                   mushroom.health--
                   
-                  // Play block destroy sound
+                  // Play block destroy sound at lower volume
                   if (soundManager) {
-                    soundManager.play('block-destroy')
+                    soundManager.play('block-destroy', 0.3)
                   }
                   createMushroomParticles(mushroom.position, adjacentSectionIndex, mushroom.colorSet)
                 }
@@ -1940,8 +1971,8 @@ export default function MegapedeGame() {
           }
         })
 
-        // Check collision with megapede segments (using circular collision)
-        state.megapedeChains.forEach((chain, chainIndex) => {
+        // Check collision with Moloch centipede segments (using circular collision)
+        state.molochChains.forEach((chain, chainIndex) => {
           chain.segments.forEach((segment, segmentIndex) => {
             if (bullet.active && segment.isAlive) {
               // Use circular collision detection for better accuracy with round segments
@@ -1971,11 +2002,17 @@ export default function MegapedeGame() {
                   state.obstacleGrid.add(key)
 
                   // Use takeDamage instead of direct destruction to respect armor
-                  const damageResult = segment.takeDamage()
+                  // Plasma bullets do 3x damage
+                  const damage = bullet.isPlasma ? 3 : 1
+                  const damageResult = segment.takeDamage(damage)
 
                   // Play appropriate sound effect
                   if (soundManager) {
-                    soundManager.play(damageResult.hitArmor ? 'armor-hit' : 'enemy-hit')
+                    if (damageResult.hitArmor) {
+                      soundManager.play('armor-hit', 1.2) // Slightly louder for armor
+                    } else {
+                      soundManager.play('enemy-hit')
+                    }
                   }
 
                   // If segment had armor, create armor breaking particles
@@ -2004,7 +2041,7 @@ export default function MegapedeGame() {
                     // Create a new chain from the remaining segments
                     const newChain = chain.createNewChainFromSegments(segmentIndex + 1)
                     if (newChain) {
-                      state.megapedeChains.push(newChain)
+                      state.molochChains.push(newChain)
                     }
                   }
 
@@ -2017,11 +2054,17 @@ export default function MegapedeGame() {
                 }
                 // Regular body segment handling
                 else {
-                  const damageResult = segment.takeDamage()
+                  // Plasma bullets do 3x damage
+                  const damage = bullet.isPlasma ? 3 : 1
+                  const damageResult = segment.takeDamage(damage)
 
                   // Play appropriate sound effect
                   if (soundManager) {
-                    soundManager.play(damageResult.hitArmor ? 'armor-hit' : 'enemy-hit')
+                    if (damageResult.hitArmor) {
+                      soundManager.play('armor-hit', 1.2) // Slightly louder for armor
+                    } else {
+                      soundManager.play('enemy-hit')
+                    }
                   }
 
                   // Visual feedback for hitting armored segment
@@ -2068,7 +2111,7 @@ export default function MegapedeGame() {
                       const newChains = chain.splitAt(segmentIndex)
 
                       // Replace the current chain with the split chains
-                      state.megapedeChains.splice(chainIndex, 1, ...newChains)
+                      state.molochChains.splice(chainIndex, 1, ...newChains)
                     }
 
                     // Increase score and player kill count
@@ -2108,6 +2151,12 @@ export default function MegapedeGame() {
             spider.isAlive = false
             state.score += 300
             state.player.killCount += 2 // Spiders count more toward energizing
+            state.spiderKillCount += 1 // Track spider kills for power-up spawning
+            
+            // Play enemy hit sound for spider
+            if (soundManager) {
+              soundManager.play('enemy-hit')
+            }
           }
         })
       })
@@ -2146,8 +2195,8 @@ export default function MegapedeGame() {
       })
       ctx.globalAlpha = 1
 
-      // Draw megapede body segments first
-      state.megapedeChains.forEach((chain) => {
+      // Draw Moloch centipede body segments first
+      state.molochChains.forEach((chain) => {
         chain.segments.forEach((segment) => {
           if (segment.isAlive && !segment.isHead) {
             // Draw round body segment
@@ -2216,8 +2265,8 @@ export default function MegapedeGame() {
         })
       })
 
-      // Draw megapede heads on top of everything
-      state.megapedeChains.forEach((chain) => {
+      // Draw Moloch centipede heads on top of everything
+      state.molochChains.forEach((chain) => {
         chain.segments.forEach((segment) => {
           if (segment.isAlive && segment.isHead) {
             // Draw shield around head if armored
@@ -2532,8 +2581,8 @@ export default function MegapedeGame() {
         }
       })
 
-      // Update megapede chains
-      state.megapedeChains.forEach((chain) => {
+      // Update Moloch centipede chains
+      state.molochChains.forEach((chain) => {
         chain.update(GAME_WIDTH, GAME_HEIGHT, state.obstacleGrid)
 
         // Check if any segment reaches bottom or collides with player
@@ -2570,7 +2619,7 @@ export default function MegapedeGame() {
       })
       
       // Remove empty chains and segments that are not alive
-      state.megapedeChains = state.megapedeChains
+      state.molochChains = state.molochChains
         .map((chain) => {
           chain.segments = chain.segments.filter((segment) => segment.isAlive)
           return chain
@@ -2599,27 +2648,31 @@ export default function MegapedeGame() {
         state.lastSpiderSpawnTime = now2
       }
 
-      // Spawn power-ups periodically
-      const powerUpTime = Date.now()
-      if (powerUpTime - state.lastPowerUpSpawnTime > state.powerUpSpawnRate) {
-        // Create a new plasma power-up at a random position
-        // Spawn power-up in the bottom half of the map (player's area)
-        // Ensure power-up stays within bounds by accounting for its size
-        const powerUpSize = 40
-        const safeMargin = 10 // Extra margin to ensure visibility
-        const powerUpX = BORDER_WIDTH + safeMargin + Math.random() * (GAME_WIDTH - BORDER_WIDTH * 2 - powerUpSize - safeMargin * 2)
-        const powerUpY = GAME_HEIGHT / 2 + safeMargin + Math.random() * (GAME_HEIGHT / 2 - BOTTOM_BORDER_WIDTH - powerUpSize - safeMargin * 2)
-        
-        state.powerUps.push({
-          position: { x: powerUpX, y: powerUpY },
-          size: 40,
-          type: 'plasma',
-          active: true,
-          timeCreated: powerUpTime,
-          pulsePhase: 0
-        })
-        
-        state.lastPowerUpSpawnTime = powerUpTime
+      // Spawn power-ups every 5 spider kills
+      if (state.spiderKillCount > 0 && state.spiderKillCount % 5 === 0) {
+        // Check if we haven't already spawned a power-up for this kill count milestone
+        const lastSpawnedAtKillCount = Math.floor(state.lastPowerUpSpawnTime)
+        if (lastSpawnedAtKillCount !== state.spiderKillCount) {
+          // Create a new plasma power-up at a random position
+          // Spawn power-up in the bottom half of the map (player's area)
+          // Ensure power-up stays within bounds by accounting for its size
+          const powerUpSize = 40
+          const safeMargin = 10 // Extra margin to ensure visibility
+          const powerUpX = BORDER_WIDTH + safeMargin + Math.random() * (GAME_WIDTH - BORDER_WIDTH * 2 - powerUpSize - safeMargin * 2)
+          const powerUpY = GAME_HEIGHT / 2 + safeMargin + Math.random() * (GAME_HEIGHT / 2 - BOTTOM_BORDER_WIDTH - powerUpSize - safeMargin * 2)
+          
+          state.powerUps.push({
+            position: { x: powerUpX, y: powerUpY },
+            size: 40,
+            type: 'plasma',
+            active: true,
+            timeCreated: Date.now(),
+            pulsePhase: 0
+          })
+          
+          // Use lastPowerUpSpawnTime to track the spider kill count for which we last spawned a power-up
+          state.lastPowerUpSpawnTime = state.spiderKillCount
+        }
       }
 
       // Update spiders
@@ -2644,6 +2697,7 @@ export default function MegapedeGame() {
               // When energized, destroy the spider instead
               spider.isAlive = false
               state.score += 300
+              state.spiderKillCount += 1 // Track spider kills for power-up spawning
             }
           }
         }
@@ -2652,10 +2706,17 @@ export default function MegapedeGame() {
       // Remove dead spiders
       state.spiders = state.spiders.filter((spider) => spider.isAlive)
 
-      // Check if all megapede chains are destroyed
-      if (state.megapedeChains.length === 0) {
+      // Check if all Moloch centipede chains are destroyed
+      if (state.molochChains.length === 0) {
         state.level++
         setLevel(state.level)
+        
+        // Stop all audio so level intro quote can be heard clearly
+        if (soundManager) {
+          soundManager.stopMusic()
+          soundManager.stopAllBulletLoops()
+        }
+        
         startLevelIntro()
       }
 
@@ -2732,39 +2793,40 @@ export default function MegapedeGame() {
     gameStateRef.current.level = 1
     initGame()
     
-    // Start music for level 1 with delay
+    // Start music for level 1 with delay to ensure audio is ready
     if (soundManager) {
       setTimeout(() => {
         soundManager?.startLevelMusic(1)
-      }, 500)
+      }, 1000) // Longer delay for initial start
     }
   }
 
   const startLevelIntro = async () => {
     setLevelIntro(true)
-    setLevelIntroCountdown(5)
+    setLevelIntroCountdown(7) // Give more time for intro sound
     
-    // Play random intro sound
+    // Play intro sound (music already stopped at level completion)
     if (soundManager) {
-      await soundManager.playRandomIntro()
+      soundManager.playRandomIntro()
+      // Wait 2 seconds to let intro sound play before starting countdown
+      await new Promise(resolve => setTimeout(resolve, 2000))
     }
     
     // Start countdown
-    const countdownInterval = setInterval(async () => {
+    const countdownInterval = setInterval(() => {
       setLevelIntroCountdown(prev => {
         if (prev <= 1) {
           clearInterval(countdownInterval)
           setLevelIntro(false)
           // Start the new level
           initGame()
-          // Start level music with delay
+          // Start level music immediately after game init
           if (soundManager) {
-            // Add delay to ensure game is ready
             setTimeout(() => {
-              soundManager?.startLevelMusic(level)
-            }, 200)
+              soundManager?.startLevelMusic(gameStateRef.current.level)
+            }, 100)
           }
-          return 5
+          return 7
         }
         return prev - 1
       })
@@ -2913,7 +2975,7 @@ export default function MegapedeGame() {
               {levelIntroCountdown}
             </div>
             <div className="text-lg text-gray-300 mt-4">
-              Destroy all megapede segments to advance
+              Destroy all Moloch centipede segments to advance
             </div>
           </div>
         </div>
@@ -2925,12 +2987,12 @@ export default function MegapedeGame() {
       {!gameStarted && !gameOver && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-30">
           <div className="text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">Megapede</h2>
+            <h2 className="text-3xl font-bold mb-4">Moloch Centipede</h2>
             <p className="text-xl mb-6 px-4">
               {isMobile ? (
-                <>Use the on-screen controls to play.<br />Destroy the megapede before it reaches you!</>
+                <>Use the on-screen controls to play.<br />Destroy the Moloch centipede before it reaches you!</>
               ) : (
-                <>Use arrow keys to move and space to shoot.<br />Destroy the megapede before it reaches the bottom!</>
+                <>Use arrow keys to move and space to shoot.<br />Destroy the Moloch centipede before it reaches the bottom!</>
               )}
             </p>
             <button
