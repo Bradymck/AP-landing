@@ -5,7 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 // Dynamically import the MegapedeGame component to avoid SSR issues
-const MegapedeGame = dynamic(() => import('./components/megapede/components/megapede-game'), {
+const MegapedeGame = dynamic(() => import('./components/megapede-game'), {
   ssr: false,
   loading: () => <div className="text-cyan-300">Loading game...</div>
 });
