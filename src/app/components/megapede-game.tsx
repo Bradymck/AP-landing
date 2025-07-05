@@ -5,13 +5,22 @@ import { useEffect, useRef, useState } from "react"
 // Sound System
 class SoundManager {
   private sounds: { [key: string]: HTMLAudioElement } = {}
+  private introSounds: HTMLAudioElement[] = []
+  private musicTracks: HTMLAudioElement[] = []
+  private currentMusic: HTMLAudioElement | null = null
+  private currentMusicIndex: number = 0
+  private bulletLoop: HTMLAudioElement | null = null
+  private plasmaLoop: HTMLAudioElement | null = null
+  private isBulletLooping: boolean = false
+  private isPlasmaLooping: boolean = false
   private muted: boolean = false
+  private audioEnabled: boolean = false
+  private musicVolume: number = 0.3
+  private sfxVolume: number = 0.2 // Lowered for bullets
 
   constructor() {
-    // Preload all sound effects
+    // Preload all sound effects (bullets now handled separately as loops)
     const soundFiles = [
-      'bullet-shoot.wav',
-      'plasma-shoot.wav', 
       'enemy-hit.wav',
       'armor-hit.wav',
       'block-destroy.wav',
@@ -25,12 +34,97 @@ class SoundManager {
       try {
         const audio = new Audio(`/sfx/${file}`)
         audio.preload = 'auto'
-        audio.volume = 0.3 // Lower volume for better experience
-        this.sounds[file.replace('.wav', '')] = audio
+        audio.volume = this.sfxVolume
+        
+        // Add error listener for failed sounds
+        audio.addEventListener('error', (e) => {
+          console.warn(`Failed to load sound: ${file}`)
+        })
+        
+        this.sounds[file.replace('.wav', '').replace('.mp3', '')] = audio
       } catch (error) {
-        console.warn(`Could not load sound: ${file}`)
+        console.warn(`Could not load sound: ${file}`, error)
       }
     })
+
+    // Load intro sounds
+    const introFiles = ['baloons.mp3', 'not-my-chair.mp3', 'noway.mp3', 'seahorses.mp3']
+    introFiles.forEach(file => {
+      try {
+        const audio = new Audio(`/sfx/intros/${file}`)
+        audio.preload = 'auto'
+        audio.volume = this.sfxVolume
+        this.introSounds.push(audio)
+      } catch (error) {
+        console.warn(`Could not load intro sound: ${file}`, error)
+      }
+    })
+
+    // Load music tracks
+    const musicFiles = ['boss.mp3', 'drumph.mp3', 'epic-groove.mp3', 'epicAF.mp3', 'skiff.mp3', 'steampunk.mp3', 'sofass.mp3']
+    musicFiles.forEach(file => {
+      try {
+        const audio = new Audio(`/sfx/music/${file}`)
+        audio.preload = 'auto'
+        audio.volume = this.musicVolume
+        audio.loop = false // We'll handle looping manually for track progression
+        
+        // Add load event to ensure music is ready
+        audio.addEventListener('canplaythrough', () => {
+          // Music is ready to play
+        })
+        
+        audio.addEventListener('error', (e) => {
+          console.warn(`Failed to load music: ${file}`)
+        })
+        
+        this.musicTracks.push(audio)
+      } catch (error) {
+        console.warn(`Could not load music: ${file}`, error)
+      }
+    })
+
+    // Set up dedicated looping bullet sounds
+    try {
+      this.bulletLoop = new Audio('/sfx/bullet-shoot.wav')
+      this.bulletLoop.preload = 'auto'
+      this.bulletLoop.volume = this.sfxVolume * 0.5 // Even quieter for looping
+      this.bulletLoop.loop = true
+
+      this.plasmaLoop = new Audio('/sfx/plasma-shoot.wav')
+      this.plasmaLoop.preload = 'auto'
+      this.plasmaLoop.volume = this.sfxVolume * 0.6 // Slightly louder for plasma
+      this.plasmaLoop.loop = true
+    } catch (error) {
+      console.warn('Could not create bullet loop sounds:', error)
+    }
+  }
+
+  async enableAudio() {
+    // Try to enable audio context (required for autoplay policy)
+    if (!this.audioEnabled) {
+      try {
+        // Create a silent audio context to unlock audio
+        const context = new (window.AudioContext || (window as any).webkitAudioContext)()
+        if (context.state === 'suspended') {
+          await context.resume()
+        }
+        
+        // Play a silent sound to unlock audio on all elements
+        const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA')
+        silentAudio.volume = 0
+        try {
+          await silentAudio.play()
+          silentAudio.pause()
+        } catch (e) {
+          // Ignore silent audio failures
+        }
+        
+        this.audioEnabled = true
+      } catch (error) {
+        console.warn('Could not enable audio context:', error)
+      }
+    }
   }
 
   play(soundName: string) {
@@ -39,19 +133,206 @@ class SoundManager {
     const sound = this.sounds[soundName]
     if (sound) {
       try {
-        sound.currentTime = 0 // Reset to beginning
-        sound.play().catch(e => {
-          // Ignore autoplay policy errors
-          console.warn(`Could not play sound: ${soundName}`)
-        })
+        // Simple approach: reset and play original audio
+        sound.currentTime = 0
+        const playPromise = sound.play()
+        
+        if (playPromise !== undefined) {
+          playPromise.catch(e => {
+            // Silently handle autoplay policy errors
+            if (e.name !== 'NotAllowedError') {
+              console.warn(`Could not play sound: ${soundName}`, e)
+            }
+          })
+        }
       } catch (error) {
-        console.warn(`Error playing sound: ${soundName}`)
+        console.warn(`Error playing sound: ${soundName}`, error)
       }
+    } else {
+      // Only warn if it's not a missing optional sound
+      if (!['energy-activate', 'energy-deactivate'].includes(soundName)) {
+        console.warn(`Sound not found: ${soundName}`)
+      }
+    }
+  }
+
+  async playRandomIntro() {
+    if (this.muted || this.introSounds.length === 0) {
+      console.warn('Cannot play intro: muted or no sounds loaded')
+      return
+    }
+    
+    const randomIndex = Math.floor(Math.random() * this.introSounds.length)
+    const introSound = this.introSounds[randomIndex]
+    
+    // Playing random intro sound
+    
+    try {
+      // Ensure audio is enabled first
+      await this.enableAudio()
+      
+      introSound.currentTime = 0
+      const playPromise = introSound.play()
+      
+      if (playPromise) {
+        playPromise
+          .then(() => {
+            // Intro sound playing successfully
+          })
+          .catch(e => {
+            if (e.name !== 'NotAllowedError') {
+              console.warn('Could not play intro sound:', e)
+            }
+          })
+      }
+    } catch (error) {
+      console.warn('Error playing intro sound:', error)
+    }
+  }
+
+  async startLevelMusic(level: number) {
+    if (this.muted) return
+    
+    // Stop current music
+    this.stopMusic()
+    
+    if (this.musicTracks.length === 0) {
+      console.warn('No music tracks loaded')
+      return
+    }
+    
+    // Wait a moment for audio context to be ready
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Get track for this level (cycle through available tracks)
+    const trackIndex = (level - 1) % this.musicTracks.length
+    this.currentMusic = this.musicTracks[trackIndex]
+    this.currentMusicIndex = trackIndex
+    
+    // Starting background music
+    
+    try {
+      // Ensure the audio is ready
+      if (this.currentMusic.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+        this.currentMusic.currentTime = 0
+        this.currentMusic.loop = true
+        
+        const playPromise = this.currentMusic.play()
+        if (playPromise) {
+          playPromise
+            .then(() => {
+              // Background music playing successfully
+            })
+            .catch(e => {
+              if (e.name !== 'NotAllowedError') {
+                console.warn('Could not play background music:', e)
+                // Try again after a delay
+                setTimeout(() => {
+                  this.currentMusic?.play().catch(() => {})
+                }, 500)
+              }
+            })
+        }
+      } else {
+        console.warn('Music not ready, waiting for load...')
+        this.currentMusic.addEventListener('canplaythrough', () => {
+          if (this.currentMusic) {
+            this.currentMusic.currentTime = 0
+            this.currentMusic.loop = true
+            this.currentMusic.play().catch(e => {
+              console.warn('Delayed music play failed:', e)
+            })
+          }
+        }, { once: true })
+      }
+    } catch (error) {
+      console.warn('Error playing background music:', error)
+    }
+  }
+
+  stopMusic() {
+    if (this.currentMusic) {
+      this.currentMusic.pause()
+      this.currentMusic.currentTime = 0
+      this.currentMusic = null
+    }
+  }
+
+  setMusicVolume(volume: number) {
+    this.musicVolume = Math.max(0, Math.min(1, volume))
+    this.musicTracks.forEach(track => {
+      track.volume = this.musicVolume
+    })
+    if (this.currentMusic) {
+      this.currentMusic.volume = this.musicVolume
+    }
+  }
+
+  startBulletLoop(isPlasma: boolean = false) {
+    if (this.muted) return
+
+    const targetLoop = isPlasma ? this.plasmaLoop : this.bulletLoop
+    const targetFlag = isPlasma ? 'isPlasmaLooping' : 'isBulletLooping'
+
+    if (!targetLoop || this[targetFlag]) return
+
+    try {
+      targetLoop.currentTime = 0
+      targetLoop.play().catch(e => {
+        if (e.name !== 'NotAllowedError') {
+          console.warn(`Could not start ${isPlasma ? 'plasma' : 'bullet'} loop:`, e)
+        }
+      })
+      this[targetFlag] = true
+    } catch (error) {
+      console.warn(`Error starting ${isPlasma ? 'plasma' : 'bullet'} loop:`, error)
+    }
+  }
+
+  stopBulletLoop(isPlasma: boolean = false) {
+    const targetLoop = isPlasma ? this.plasmaLoop : this.bulletLoop
+    const targetFlag = isPlasma ? 'isPlasmaLooping' : 'isBulletLooping'
+
+    if (!targetLoop || !this[targetFlag]) return
+
+    try {
+      targetLoop.pause()
+      targetLoop.currentTime = 0
+      this[targetFlag] = false
+    } catch (error) {
+      console.warn(`Error stopping ${isPlasma ? 'plasma' : 'bullet'} loop:`, error)
+    }
+  }
+
+  stopAllBulletLoops() {
+    this.stopBulletLoop(false) // Stop regular bullets
+    this.stopBulletLoop(true)  // Stop plasma bullets
+  }
+
+  setSfxVolume(volume: number) {
+    this.sfxVolume = Math.max(0, Math.min(1, volume))
+    Object.values(this.sounds).forEach(sound => {
+      sound.volume = this.sfxVolume
+    })
+    this.introSounds.forEach(sound => {
+      sound.volume = this.sfxVolume
+    })
+    
+    // Update bullet loop volumes
+    if (this.bulletLoop) {
+      this.bulletLoop.volume = this.sfxVolume * 0.5
+    }
+    if (this.plasmaLoop) {
+      this.plasmaLoop.volume = this.sfxVolume * 0.6
     }
   }
 
   toggleMute() {
     this.muted = !this.muted
+    if (this.muted) {
+      this.stopMusic()
+      this.stopAllBulletLoops()
+    }
     return this.muted
   }
 }
@@ -169,6 +450,7 @@ type Bullet = {
   speed: number
   active: boolean
   isPlasma?: boolean // Flag for enhanced plasma bullets
+  velocity?: Vector2 // Direction vector for multi-directional bullets
 }
 
 type Particle = {
@@ -867,6 +1149,8 @@ export default function MegapedeGame() {
   const [gameOver, setGameOver] = useState(false)
   const [score, setScore] = useState(0)
   const [level, setLevel] = useState(1)
+  const [levelIntro, setLevelIntro] = useState(false)
+  const [levelIntroCountdown, setLevelIntroCountdown] = useState(5)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [showControls, setShowControls] = useState(false)
@@ -1002,6 +1286,8 @@ export default function MegapedeGame() {
     // Initialize sound manager if not already created
     if (!soundManager) {
       soundManager = new SoundManager()
+      // Enable audio on first user interaction
+      soundManager.enableAudio()
     }
 
     // Reset game state
@@ -1167,7 +1453,7 @@ export default function MegapedeGame() {
 
   // Game loop
   useEffect(() => {
-    if (!gameStarted) return
+    if (!gameStarted || levelIntro) return
 
     let animationFrameId: number
     const canvas = canvasRef.current
@@ -1211,6 +1497,11 @@ export default function MegapedeGame() {
       if (state.gameOver) {
         setGameOver(true)
         setGameStarted(false)
+        // Stop background music and bullet loops
+        if (soundManager) {
+          soundManager.stopMusic()
+          soundManager.stopAllBulletLoops()
+        }
         return
       }
 
@@ -1353,21 +1644,63 @@ export default function MegapedeGame() {
         const bulletSize = isPlasma ? 25 : BULLET_SIZE // Much larger plasma bullets
         const bulletSpeed = isPlasma ? BULLET_SPEED * 0.7 : BULLET_SPEED // Plasma bullets are slower
         
-        state.bullets.push({
-          position: {
-            x: state.player.position.x + state.player.size / 2 - bulletSize / 2,
-            y: state.player.position.y - bulletSize
-          },
-          size: bulletSize,
-          speed: bulletSpeed,
-          active: true,
-          isPlasma: isPlasma
-        })
-        state.lastShootTime = currentTime
+        if (state.player.energized) {
+          // Energized mode: Three-way spread shot
+          const spreadAngles = [-0.3, 0, 0.3] // Left, center, right angles in radians
+          
+          spreadAngles.forEach(angle => {
+            const velocity = {
+              x: Math.sin(angle) * bulletSpeed * 0.8, // Horizontal component
+              y: -Math.cos(angle) * bulletSpeed // Vertical component (negative = up)
+            }
+            
+            state.bullets.push({
+              position: {
+                x: state.player.position.x + state.player.size / 2 - bulletSize / 2,
+                y: state.player.position.y - bulletSize
+              },
+              size: bulletSize,
+              speed: bulletSpeed,
+              active: true,
+              isPlasma: isPlasma,
+              velocity: velocity
+            })
+          })
+        } else {
+          // Normal mode: Single straight bullet
+          state.bullets.push({
+            position: {
+              x: state.player.position.x + state.player.size / 2 - bulletSize / 2,
+              y: state.player.position.y - bulletSize
+            },
+            size: bulletSize,
+            speed: bulletSpeed,
+            active: true,
+            isPlasma: isPlasma,
+            velocity: { x: 0, y: -bulletSpeed } // Straight up
+          })
+        }
         
-        // Play appropriate shooting sound
-        if (soundManager) {
-          soundManager.play(isPlasma ? 'plasma-shoot' : 'bullet-shoot')
+        state.lastShootTime = currentTime
+      }
+
+      // Manage bullet loop sounds based on shooting state
+      if (soundManager) {
+        const isShooting = state.autoShootEnabled || state.keys.space
+        const isPlasma = state.player.plasmaActive
+        
+        if (isShooting) {
+          // Start the appropriate bullet loop
+          soundManager.startBulletLoop(isPlasma)
+          // Stop the other loop if switching bullet types
+          if (isPlasma) {
+            soundManager.stopBulletLoop(false) // Stop regular bullets
+          } else {
+            soundManager.stopBulletLoop(true)  // Stop plasma bullets
+          }
+        } else {
+          // Stop all bullet loops when not shooting
+          soundManager.stopAllBulletLoops()
         }
       }
 
@@ -1461,10 +1794,18 @@ export default function MegapedeGame() {
 
       // Update bullets
       state.bullets.forEach((bullet) => {
-        bullet.position.y -= bullet.speed
+        // Use velocity vector if available (for directional bullets), otherwise default movement
+        if (bullet.velocity) {
+          bullet.position.x += bullet.velocity.x
+          bullet.position.y += bullet.velocity.y
+        } else {
+          bullet.position.y -= bullet.speed
+        }
 
-        // Remove bullets that go off screen
-        if (bullet.position.y < BORDER_WIDTH) {
+        // Remove bullets that go off screen (any direction)
+        if (bullet.position.y < BORDER_WIDTH || 
+            bullet.position.x < 0 || 
+            bullet.position.x > GAME_WIDTH) {
           bullet.active = false
         }
 
@@ -2315,7 +2656,7 @@ export default function MegapedeGame() {
       if (state.megapedeChains.length === 0) {
         state.level++
         setLevel(state.level)
-        initGame()
+        startLevelIntro()
       }
 
       // Update score state
@@ -2331,7 +2672,7 @@ export default function MegapedeGame() {
     return () => {
       cancelAnimationFrame(animationFrameId)
     }
-  }, [gameStarted, score, level])
+  }, [gameStarted, score, level, levelIntro])
 
   // Function to handle window resizing and responsive canvas
   const handleResize = () => {
@@ -2379,12 +2720,55 @@ export default function MegapedeGame() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
+    // Enable audio on user interaction
+    if (soundManager) {
+      await soundManager.enableAudio()
+    }
+    
     setScore(0)
     setLevel(1)
     gameStateRef.current.score = 0
     gameStateRef.current.level = 1
     initGame()
+    
+    // Start music for level 1 with delay
+    if (soundManager) {
+      setTimeout(() => {
+        soundManager?.startLevelMusic(1)
+      }, 500)
+    }
+  }
+
+  const startLevelIntro = async () => {
+    setLevelIntro(true)
+    setLevelIntroCountdown(5)
+    
+    // Play random intro sound
+    if (soundManager) {
+      await soundManager.playRandomIntro()
+    }
+    
+    // Start countdown
+    const countdownInterval = setInterval(async () => {
+      setLevelIntroCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval)
+          setLevelIntro(false)
+          // Start the new level
+          initGame()
+          // Start level music with delay
+          if (soundManager) {
+            // Add delay to ensure game is ready
+            setTimeout(() => {
+              soundManager?.startLevelMusic(level)
+            }, 200)
+          }
+          return 5
+        }
+        return prev - 1
+      })
+    }, 1000)
   }
   
   // Handle fullscreen toggle
@@ -2513,6 +2897,26 @@ export default function MegapedeGame() {
             )}
           </div>
         </>
+      )}
+      
+      {/* Level Intro Screen */}
+      {levelIntro && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-95 z-40">
+          <div className="text-center text-white">
+            <h2 className="text-6xl font-bold mb-8 text-cyan-400 animate-pulse">
+              LEVEL {level}
+            </h2>
+            <div className="text-2xl mb-6 text-yellow-400">
+              Get Ready!
+            </div>
+            <div className="text-4xl font-bold text-red-400 animate-bounce">
+              {levelIntroCountdown}
+            </div>
+            <div className="text-lg text-gray-300 mt-4">
+              Destroy all megapede segments to advance
+            </div>
+          </div>
+        </div>
       )}
       
       {/* Game Over Screen - now moved to canvas section */}
