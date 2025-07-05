@@ -1123,7 +1123,7 @@ export default function MegapedeGame() {
       console.error('Error loading ship image:', e)
       shipImageRef.current = null // Set to null on error to use fallback
     }
-    shipImage.src = '/logo.png' // Use the AquaPrime logo from the main public directory
+    shipImage.src = '/ship.png' // Use the actual ship image
     shipImageRef.current = shipImage
     
     // Load the hungry image for spiders with error handling

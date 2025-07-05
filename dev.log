@@ -24,3 +24,5 @@ Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
  ✓ Compiled in 467ms (3859 modules)
  ✓ Compiled /not-found in 85ms (1924 modules)
  ✓ Compiled in 351ms (3862 modules)
+ ✓ Compiled in 679ms (3859 modules)
+ ✓ Compiled /not-found in 147ms (1924 modules)
