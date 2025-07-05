@@ -1354,7 +1354,6 @@ export default function MolochGame() {
     state.powerUps = []
     state.obstacleGrid = new Set()
     state.score = 0
-    state.level = 1
     state.lastUpdateTime = Date.now()
     state.lastSpiderSpawnTime = Date.now()
     
