@@ -26,8 +26,8 @@ export default function NotFound() {
 
   if (showGame) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-800 via-purple-900 to-blue-800 text-white flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-5xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-b from-blue-800 via-purple-900 to-blue-800 text-white flex flex-col items-center justify-start p-4">
+        <div className="w-full max-w-4xl mx-auto">
           <div className="text-center mb-4">
             <h2 className="text-2xl font-bold text-cyan-300 mb-2">🎮 Secret Discovered!</h2>
             <p className="text-cyan-200 mb-4">You found the hidden ACTUAL AquaPrime Megapede game!</p>
@@ -39,12 +39,14 @@ export default function NotFound() {
             </button>
           </div>
           
-          <MegapedeGame />
+          <div className="mb-4">
+            <MegapedeGame />
+          </div>
           
-          <div className="text-center mt-4">
+          <div className="text-center">
             <Link 
               href="/"
-              className="inline-flex items-center justify-center px-8 py-4 font-bold bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 font-bold bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors"
             >
               Return to Home Waters
             </Link>

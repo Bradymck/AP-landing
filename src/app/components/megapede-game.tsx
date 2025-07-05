@@ -2319,7 +2319,7 @@ export default function MegapedeGame() {
   // User needs to manually start the game
 
   return (
-    <div className="relative w-full flex flex-col items-center bg-black overflow-auto rounded-lg border-2 border-cyan-300 p-4" ref={gameContainerRef}>
+    <div className="relative w-full flex flex-col items-center bg-black overflow-auto rounded-lg border-2 border-cyan-300 p-2" ref={gameContainerRef}>
       {/* Score and Level Display */}
       {gameStarted && !gameOver && (
         <>
@@ -2358,13 +2358,13 @@ export default function MegapedeGame() {
         </div>
       )}
       
-      <div className="w-full max-w-4xl flex justify-center flex-grow-0 mt-4 relative">
+      <div className="w-full max-w-3xl flex justify-center flex-grow-0 relative">
         <canvas
           ref={canvasRef}
           width={BASE_GAME_WIDTH}
           height={BASE_GAME_HEIGHT}
           className="bg-black max-w-full h-auto block object-contain border border-cyan-500"
-          style={{ maxWidth: '100%', height: 'auto' }}
+          style={{ maxWidth: '100%', height: 'auto', maxHeight: '60vh' }}
         />
         
         {/* Game Over screen overlay */}
@@ -2388,7 +2388,7 @@ export default function MegapedeGame() {
       
       {/* Mobile Game Controls - Game Boy style below the canvas */}
       {isMobile && gameStarted && !gameOver && (
-        <div className="mt-4 bg-gray-800 p-4 w-full max-w-4xl overflow-visible border-t-2 border-cyan-500 rounded-b-lg">
+        <div className="mt-2 bg-gray-800 p-3 w-full max-w-3xl overflow-visible border-t-2 border-cyan-500 rounded-b-lg">
           {/* Controls toggle button */}
           <div className="flex justify-center mb-4 relative">
             <button 
