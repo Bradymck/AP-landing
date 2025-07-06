@@ -1240,11 +1240,9 @@ export default function MolochGame() {
     level: 1,
     gameOver: false,
     levelEmoji: "",
-    // Enhanced wave management
-    centipedeWave: 1, // Current wave number (1 or 2)
-    maxWaves: 2, // Total waves per level
+    // Enhanced centipede management
     centipedesSpawned: 0, // How many centipedes spawned this level
-    maxCentipedesPerWave: 2, // Up to 2 centipedes per wave
+    maxCentipedesPerLevel: 4, // Total centipedes to spawn per level (ensures longer gameplay)
     roundTripTriggers: 0, // Track round trips to spawn additional centipedes
   })
 
@@ -1326,8 +1324,8 @@ export default function MolochGame() {
   const spawnCentipede = () => {
     const state = gameStateRef.current
     
-    // Check if we can spawn more centipedes this wave
-    if (state.centipedesSpawned >= state.maxCentipedesPerWave) {
+    // Check if we can spawn more centipedes this level
+    if (state.centipedesSpawned >= state.maxCentipedesPerLevel) {
       return
     }
     
@@ -1349,17 +1347,19 @@ export default function MolochGame() {
         currentState.roundTripTriggers++
         console.log(`🔄 Round trip completed! Triggers: ${currentState.roundTripTriggers}`)
         
-        // Spawn additional centipede after round trip (if under limits)
-        if (currentState.centipedesSpawned < currentState.maxCentipedesPerWave) {
-          setTimeout(() => spawnCentipede(), 1000) // Small delay for drama
-        }
+        // Always try to spawn additional centipede after round trip
+        // The main game loop will check limits and spawn if appropriate
+        setTimeout(() => {
+          console.log(`🔄 Round trip triggering spawn check...`)
+          // No direct spawn here - let the main game loop handle it
+        }, 500)
       }
     }
 
     state.molochChains.push(molochChain)
     state.centipedesSpawned++
     
-    console.log(`🐛 Spawned centipede ${state.centipedesSpawned}/${state.maxCentipedesPerWave} for wave ${state.centipedeWave}`)
+    console.log(`🐛 Spawned centipede ${state.centipedesSpawned}/${state.maxCentipedesPerLevel} for level ${state.level}`)
   }
 
   const initGame = () => {
@@ -1426,8 +1426,7 @@ export default function MolochGame() {
       createMushroom(mushroomX, mushroomY)
     }
 
-    // Reset wave tracking for new level
-    state.centipedeWave = 1
+    // Reset centipede tracking for new level
     state.centipedesSpawned = 0
     state.roundTripTriggers = 0
     
@@ -2764,39 +2763,36 @@ export default function MolochGame() {
       // Remove dead spiders
       state.spiders = state.spiders.filter((spider) => spider.isAlive)
 
-      // Check if all Moloch centipede chains are destroyed
-      if (state.molochChains.length === 0) {
-        // Check if we should spawn the next wave or advance to next level
-        if (state.centipedeWave < state.maxWaves) {
-          // Start next wave
-          state.centipedeWave++
-          state.centipedesSpawned = 0
-          state.roundTripTriggers = 0
-          console.log(`🌊 Starting wave ${state.centipedeWave} of level ${state.level}`)
-          
-          // Spawn first centipede of new wave
-          spawnCentipede()
-        } else {
-          // All waves complete, advance to next level
-          state.level++
-          setLevel(state.level)
-          CURRENT_GAME_LEVEL = state.level
-          
-          // Reset wave tracking for new level
-          state.centipedeWave = 1
-          state.centipedesSpawned = 0
-          state.roundTripTriggers = 0
-          
-          console.log(`🏆 Advancing to Level ${state.level}`)
-          
-          // Stop all audio so level intro quote can be heard clearly
-          if (soundManager) {
-            soundManager.stopMusic()
-            soundManager.stopAllBulletLoops()
-          }
-          
-          startLevelIntro()
+      // Check if we need to spawn replacement centipedes after one is destroyed
+      const targetCentipedes = 2 // Always aim for 2 active centipedes
+      const activeCentipedes = state.molochChains.length
+      
+      if (activeCentipedes < targetCentipedes && state.centipedesSpawned < state.maxCentipedesPerLevel) {
+        // Spawn replacement centipede
+        console.log(`🐛 Spawning replacement centipede (${activeCentipedes}/${targetCentipedes} active, ${state.centipedesSpawned}/${state.maxCentipedesPerLevel} total spawned)`)
+        spawnCentipede()
+      }
+      
+      // Check if maximum centipedes for this level have been killed
+      if (state.molochChains.length === 0 && state.centipedesSpawned >= state.maxCentipedesPerLevel) {
+        // Level complete - advance to next level
+        state.level++
+        setLevel(state.level)
+        CURRENT_GAME_LEVEL = state.level
+        
+        // Reset centipede tracking for new level
+        state.centipedesSpawned = 0
+        state.roundTripTriggers = 0
+        
+        console.log(`🏆 Level ${state.level - 1} complete! Advancing to Level ${state.level}`)
+        
+        // Stop all audio so level intro quote can be heard clearly
+        if (soundManager) {
+          soundManager.stopMusic()
+          soundManager.stopAllBulletLoops()
         }
+        
+        startLevelIntro()
       }
 
       // Update score state
