@@ -1450,6 +1450,11 @@ export default function MolochGame() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current
 
+      // Always prevent default behavior for spacebar to avoid page scroll
+      if (e.key === " ") {
+        e.preventDefault()
+      }
+
       // Don't process input during level intro countdown or game over
       if (levelIntro || state.gameOver) return
 
@@ -1474,6 +1479,11 @@ export default function MolochGame() {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const state = gameStateRef.current
+
+      // Always prevent default behavior for spacebar to avoid page scroll
+      if (e.key === " ") {
+        e.preventDefault()
+      }
 
       // Don't process input during level intro countdown or game over
       if (levelIntro || state.gameOver) return
