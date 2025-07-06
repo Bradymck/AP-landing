@@ -1450,8 +1450,8 @@ export default function MolochGame() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current
 
-      // Don't process input during level intro countdown
-      if (levelIntro) return
+      // Don't process input during level intro countdown or game over
+      if (levelIntro || state.gameOver) return
 
       switch (e.key) {
         case "ArrowLeft":
@@ -1475,8 +1475,8 @@ export default function MolochGame() {
     const handleKeyUp = (e: KeyboardEvent) => {
       const state = gameStateRef.current
 
-      // Don't process input during level intro countdown
-      if (levelIntro) return
+      // Don't process input during level intro countdown or game over
+      if (levelIntro || state.gameOver) return
 
       switch (e.key) {
         case "ArrowLeft":
@@ -1510,8 +1510,8 @@ export default function MolochGame() {
   window.handleTouchStart = (direction: string) => {
     const state = gameStateRef.current
     
-    // Don't process input during level intro countdown
-    if (levelIntro) return
+    // Don't process input during level intro countdown or game over
+    if (levelIntro || state.gameOver) return
     
     if (direction === "left") state.keys.left = true
     if (direction === "right") state.keys.right = true
@@ -1529,8 +1529,8 @@ export default function MolochGame() {
   window.handleTouchEnd = (direction: string) => {
     const state = gameStateRef.current
     
-    // Don't process input during level intro countdown
-    if (levelIntro) return
+    // Don't process input during level intro countdown or game over
+    if (levelIntro || state.gameOver) return
     
     if (direction === "left") state.keys.left = false
     if (direction === "right") state.keys.right = false
