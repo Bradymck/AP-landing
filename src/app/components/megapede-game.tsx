@@ -1245,6 +1245,14 @@ export default function MolochGame() {
     maxCentipedesPerLevel: 4, // Total centipedes to spawn per level (ensures longer gameplay)
     roundTripTriggers: 0, // Track round trips to spawn additional centipedes
     lastKeyResetTime: 0, // Track time for stuck key detection
+    shockwaveEffect: null as {
+      x: number;
+      y: number;
+      radius: number;
+      maxRadius: number;
+      startTime: number;
+      duration: number;
+    } | null, // Track shockwave effect state
   })
 
   // Create particles when mushroom is hit
@@ -1620,6 +1628,90 @@ export default function MolochGame() {
     canvas.width = GAME_WIDTH
     canvas.height = GAME_HEIGHT
 
+    // Function to create shockwave effect when energize expires
+    const createShockwave = () => {
+      const state = gameStateRef.current
+      const playerCenterX = state.player.position.x + state.player.size / 2
+      const playerCenterY = state.player.position.y + state.player.size / 2
+      const shockwaveRadius = 150 // Radius of effect
+      
+      // Damage all enemies within shockwave radius
+      let enemiesHit = 0
+      
+      // Check centipede segments
+      state.molochChains.forEach((chain) => {
+        chain.segments.forEach((segment) => {
+          if (segment.isAlive) {
+            const segmentCenterX = segment.position.x + SEGMENT_SIZE / 2
+            const segmentCenterY = segment.position.y + SEGMENT_SIZE / 2
+            const distance = Math.sqrt(
+              Math.pow(segmentCenterX - playerCenterX, 2) + 
+              Math.pow(segmentCenterY - playerCenterY, 2)
+            )
+            
+            if (distance <= shockwaveRadius) {
+              // Damage the segment
+              if (segment.isArmored) {
+                segment.armorLevel--
+                if (segment.armorLevel <= 0) {
+                  segment.isArmored = false
+                  segment.color = segment.isHead ? "#FF0000" : "#00FF00"
+                }
+                if (soundManager) {
+                  soundManager.play('armor-hit')
+                }
+              } else {
+                segment.isAlive = false
+                if (soundManager) {
+                  soundManager.play('enemy-hit')
+                }
+                // Award points for shockwave kills
+                state.score += segment.isHead ? 100 : 50
+                enemiesHit++
+              }
+            }
+          }
+        })
+      })
+      
+      // Check spiders
+      state.spiders.forEach((spider) => {
+        if (spider.isAlive) {
+          const distance = Math.sqrt(
+            Math.pow(spider.position.x - playerCenterX, 2) + 
+            Math.pow(spider.position.y - playerCenterY, 2)
+          )
+          
+          if (distance <= shockwaveRadius) {
+            spider.isAlive = false
+            if (soundManager) {
+              soundManager.play('enemy-hit')
+            }
+            state.score += 300
+            state.spiderKillCount++
+            enemiesHit++
+          }
+        }
+      })
+      
+      // Play different sound based on hits
+      if (enemiesHit > 0) {
+        if (soundManager) {
+          soundManager.play('block-destroy') // Use block-destroy for shockwave sound
+        }
+      }
+      
+      // Create visual shockwave effect by adding temporary effect to state
+      state.shockwaveEffect = {
+        x: playerCenterX,
+        y: playerCenterY,
+        radius: 0,
+        maxRadius: shockwaveRadius,
+        startTime: Date.now(),
+        duration: 500 // 0.5 seconds
+      }
+    }
+
     const gameLoop = () => {
       const state = gameStateRef.current
 
@@ -1754,6 +1846,8 @@ export default function MolochGame() {
       // Check for energy expiration
       if (state.player.energized && Date.now() > state.player.energyTimer + state.player.energyDuration) {
         state.player.energized = false
+        // Create shockwave effect when energize expires
+        createShockwave()
         // Play energy deactivation sound
         if (soundManager) {
           soundManager.play('energy-deactivate')
@@ -1769,6 +1863,8 @@ export default function MolochGame() {
       if (state.player.energized && Date.now() - state.player.energyTimer > state.player.energyDuration) {
         state.player.energized = false
         state.player.color = "#FF0000"
+        // Create shockwave effect when energize expires
+        createShockwave()
         // Play energy deactivation sound
         if (soundManager) {
           soundManager.play('energy-deactivate')
@@ -2617,6 +2713,54 @@ export default function MolochGame() {
       
       // Reset shadow for other elements
       ctx.shadowBlur = 0
+
+      // Draw shockwave effect if active
+      if (state.shockwaveEffect) {
+        const currentTime = Date.now()
+        const elapsed = currentTime - state.shockwaveEffect.startTime
+        const progress = Math.min(elapsed / state.shockwaveEffect.duration, 1)
+        
+        if (progress < 1) {
+          // Calculate current radius based on progress
+          const currentRadius = state.shockwaveEffect.maxRadius * progress
+          
+          // Create expanding ring effect with fade
+          const alpha = 1 - progress // Fade out as it expands
+          
+          // Draw outer ring
+          ctx.save()
+          ctx.strokeStyle = `rgba(255, 255, 0, ${alpha * 0.8})` // Bright yellow
+          ctx.lineWidth = 4
+          ctx.beginPath()
+          ctx.arc(state.shockwaveEffect.x, state.shockwaveEffect.y, currentRadius, 0, Math.PI * 2)
+          ctx.stroke()
+          
+          // Draw inner ring
+          ctx.strokeStyle = `rgba(255, 165, 0, ${alpha * 0.6})` // Orange
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.arc(state.shockwaveEffect.x, state.shockwaveEffect.y, currentRadius * 0.8, 0, Math.PI * 2)
+          ctx.stroke()
+          
+          // Draw energy particles within the shockwave
+          for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2
+            const particleRadius = currentRadius * 0.9
+            const x = state.shockwaveEffect.x + Math.cos(angle) * particleRadius
+            const y = state.shockwaveEffect.y + Math.sin(angle) * particleRadius
+            
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.7})`
+            ctx.beginPath()
+            ctx.arc(x, y, 2, 0, Math.PI * 2)
+            ctx.fill()
+          }
+          
+          ctx.restore()
+        } else {
+          // Effect is complete, remove it
+          state.shockwaveEffect = null
+        }
+      }
 
       // Draw game info with modern styling
       ctx.save()
