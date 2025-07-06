@@ -13,7 +13,8 @@ class SoundManager {
   private plasmaLoop: HTMLAudioElement | null = null
   private isBulletLooping: boolean = false
   private isPlasmaLooping: boolean = false
-  private muted: boolean = false
+  private sfxMuted: boolean = false
+  private musicMuted: boolean = false
   private audioEnabled: boolean = false
   private musicVolume: number = 0.3
   private sfxVolume: number = 0.2 // Lowered for bullets
@@ -138,7 +139,7 @@ class SoundManager {
   }
 
   play(soundName: string, volumeMultiplier: number = 1.0) {
-    if (this.muted) return
+    if (this.sfxMuted) return
     
     const sound = this.sounds[soundName]
     if (sound) {
@@ -180,7 +181,7 @@ class SoundManager {
   }
 
   async playRandomIntro() {
-    if (this.muted || this.introSounds.length === 0) {
+    if (this.sfxMuted || this.introSounds.length === 0) {
       console.warn('Cannot play intro: muted or no sounds loaded')
       return
     }
@@ -214,7 +215,7 @@ class SoundManager {
   }
 
   async startLevelMusic(level: number) {
-    if (this.muted) return
+    if (this.musicMuted) return
     
     // Stop current music
     this.stopMusic()
@@ -299,7 +300,7 @@ class SoundManager {
   }
 
   startBulletLoop(isPlasma: boolean = false) {
-    if (this.muted) return
+    if (this.sfxMuted) return
 
     const targetLoop = isPlasma ? this.plasmaLoop : this.bulletLoop
     const targetFlag = isPlasma ? 'isPlasmaLooping' : 'isBulletLooping'
@@ -357,13 +358,55 @@ class SoundManager {
     }
   }
 
-  toggleMute() {
-    this.muted = !this.muted
-    if (this.muted) {
-      this.stopMusic()
+  toggleSfxMute() {
+    this.sfxMuted = !this.sfxMuted
+    if (this.sfxMuted) {
       this.stopAllBulletLoops()
     }
-    return this.muted
+    return this.sfxMuted
+  }
+
+  toggleMusicMute() {
+    this.musicMuted = !this.musicMuted
+    if (this.musicMuted) {
+      this.stopMusic()
+    }
+    return this.musicMuted
+  }
+
+  setSfxMuted(muted: boolean) {
+    this.sfxMuted = muted
+    if (this.sfxMuted) {
+      this.stopAllBulletLoops()
+    }
+  }
+
+  setMusicMuted(muted: boolean) {
+    this.musicMuted = muted
+    if (this.musicMuted) {
+      this.stopMusic()
+    }
+  }
+
+  isSfxMuted(): boolean {
+    return this.sfxMuted
+  }
+
+  isMusicMuted(): boolean {
+    return this.musicMuted
+  }
+
+  // Keep the old method for compatibility but update it
+  toggleMute() {
+    this.sfxMuted = !this.sfxMuted
+    this.musicMuted = !this.musicMuted
+    if (this.sfxMuted) {
+      this.stopAllBulletLoops()
+    }
+    if (this.musicMuted) {
+      this.stopMusic()
+    }
+    return this.sfxMuted && this.musicMuted
   }
 }
 
@@ -1190,6 +1233,8 @@ export default function MolochGame() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [showControls, setShowControls] = useState(false)
+  const [sfxMuted, setSfxMuted] = useState(false)
+  const [musicMuted, setMusicMuted] = useState(false)
   
   // Create image for player ship and spider
   const shipImageRef = useRef<HTMLImageElement | null>(null)
@@ -1380,6 +1425,10 @@ export default function MolochGame() {
       soundManager = new SoundManager()
       // Enable audio on first user interaction
       soundManager.enableAudio()
+      
+      // Sync React state with SoundManager state
+      setSfxMuted(soundManager.isSfxMuted())
+      setMusicMuted(soundManager.isMusicMuted())
     }
 
     // Reset game state
@@ -3227,6 +3276,45 @@ export default function MolochGame() {
             {isEnergized && (
               <div className="absolute inset-0 bg-yellow-400 bg-opacity-30 rounded-lg animate-pulse -z-10 blur-sm" />
             )}
+          </div>
+          
+          {/* Mute Controls - Top Right */}
+          <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+            {/* SFX Mute Button */}
+            <button
+              onClick={() => {
+                if (soundManager) {
+                  const newMuted = soundManager.toggleSfxMute();
+                  setSfxMuted(newMuted);
+                }
+              }}
+              className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
+                sfxMuted 
+                  ? 'bg-red-600 border-red-500 text-white' 
+                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+              }`}
+              title={sfxMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
+            >
+              {sfxMuted ? '🔇' : '🔊'}
+            </button>
+            
+            {/* Music Mute Button */}
+            <button
+              onClick={() => {
+                if (soundManager) {
+                  const newMuted = soundManager.toggleMusicMute();
+                  setMusicMuted(newMuted);
+                }
+              }}
+              className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
+                musicMuted 
+                  ? 'bg-red-600 border-red-500 text-white' 
+                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+              }`}
+              title={musicMuted ? 'Unmute Music' : 'Mute Music'}
+            >
+              {musicMuted ? '🔕' : '🎵'}
+            </button>
           </div>
         </>
       )}

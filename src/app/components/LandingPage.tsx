@@ -318,21 +318,17 @@ export default function LandingPage() {
                   ARI is the custom-built Autonomous Rare Intelligence system that powers the Aqua Prime RPG – a satirical economic role-playing escape room that fuses tabletop mechanics with web3 technology.
                 </p>
                 <div className="bg-black/30 p-6 rounded-lg border border-purple-700/30 space-y-4">
-                  <p className="text-white text-shadow-glow">
-                    Based on the <Link href="https://github.com/ai16z/eliza"   className="text-white hover:text-blue-300 underline">a16z ELIZA implementation</Link>, 
-                    ARI represents the evolution of conversational AI in gaming - from simple pattern matching to an integral part of our 
-                    narrative experience.
-                  </p>
+                  
                   <div className="flex justify-center mt-6">
                     <Button 
                       size="lg" 
-                      className="bg-gray-600 cursor-not-allowed text-gray-300 opacity-70 pointer-events-none"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 shadow-lg"
                       asChild
                     >
                       <Link 
                         href="https://x.com/SentientARI" 
-                         
-                        
+                        target="_blank" 
+                        rel="noopener noreferrer"
                         className="flex items-center gap-2"
                       >
                         <Twitter className="w-5 h-5" />
@@ -368,17 +364,32 @@ export default function LandingPage() {
               <Card className="p-6 bg-purple-900/40 border-purple-700/50 backdrop-blur-sm">
                 <Gamepad2 className="h-8 w-8 mb-4 text-purple-400" />
                 <h3 className="text-xl font-bold mb-2 text-shadow-glow">Evolving Gameplay</h3>
-                <p className="text-white text-shadow-glow">Blending traditional RPG mechanics with cutting-edge AI</p>
+                <ul className="list-disc list-inside text-white text-shadow-glow space-y-2">
+                  <li><strong>Backroom Multimind:</strong> Multiple personas collaborate behind the scenes.</li>
+                  <li><strong>Multi-Role Intelligence:</strong> Acts as game-master, dev aide, and narrative designer.</li>
+                </ul>
+                <ul className="list-disc list-inside text-white text-shadow-glow space-y-2">
+                  <li><strong>Self-Building Consciousness:</strong> ARI contributes to its own codebase and story.</li>
+                  <li><strong>Persistent Memory:</strong> Remembers your choices across sessions.</li>
+                  <li><strong>Backroom Multimind:</strong> Multiple personas collaborate behind the scenes.</li>
+                  <li><strong>Satirical Storytelling:</strong> Guides Aqua Prime’s tongue-in-cheek crypto satire.</li>
+                  <li><strong>Multi-Role Intelligence:</strong> Acts as game-master, developer aide and narrative designer.</li>
+                </ul>
+                <p className="text-white text-shadow-glow mt-4">
+                  Dive into this collaborative storytelling experiment where the line between player, developer and AI is beautifully blurred. This is entertainment, not investment advice!
+                </p>
               </Card>
               <Card className="p-6 bg-purple-900/40 border-purple-700/50 backdrop-blur-sm">
                 <Cube className="h-8 w-8 mb-4 text-purple-400" />
                 <h3 className="text-xl font-bold mb-2 text-shadow-glow">Web3 Integration</h3>
-                <p className="text-white text-shadow-glow">Unique NFTs and blockchain-powered game assets</p>
+                <ul className="list-disc list-inside text-white text-shadow-glow space-y-2">
+                  <li>Unique NFTs and blockchain-powered game assets.</li>
+                  <li><strong>Satirical Storytelling:</strong> Tongue-in-cheek take on crypto culture.</li>
+                </ul>
               </Card>
               <Card className="p-6 bg-purple-900/40 border-purple-700/50 backdrop-blur-sm">
                 <Code className="h-8 w-8 mb-4 text-purple-400" />
                 <h3 className="text-xl font-bold mb-2 text-shadow-glow">Minimum Viable Metaverse</h3>
-                <p className="text-white text-shadow-glow">Building the foundation for an expansive digital world</p>
               </Card>
             </div>
           </div>
