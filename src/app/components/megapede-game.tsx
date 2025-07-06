@@ -1244,6 +1244,7 @@ export default function MolochGame() {
     centipedesSpawned: 0, // How many centipedes spawned this level
     maxCentipedesPerLevel: 4, // Total centipedes to spawn per level (ensures longer gameplay)
     roundTripTriggers: 0, // Track round trips to spawn additional centipedes
+    lastKeyResetTime: 0, // Track time for stuck key detection
   })
 
   // Create particles when mushroom is hit
@@ -1507,14 +1508,43 @@ export default function MolochGame() {
       }
     }
 
+    // Reset all keys when focus is lost to prevent stuck keys
+    const handleBlur = () => {
+      const state = gameStateRef.current
+      state.keys.left = false
+      state.keys.right = false
+      state.keys.up = false
+      state.keys.down = false
+      state.keys.space = false
+    }
+
+    // Reset all keys when level intro starts or game over occurs
+    const resetKeys = () => {
+      const state = gameStateRef.current
+      state.keys.left = false
+      state.keys.right = false
+      state.keys.up = false
+      state.keys.down = false
+      state.keys.space = false
+    }
+
+    // Reset keys when entering blocked states
+    if (levelIntro || gameOver) {
+      resetKeys()
+    }
+
     window.addEventListener("keydown", handleKeyDown)
     window.addEventListener("keyup", handleKeyUp)
+    window.addEventListener("blur", handleBlur) // Reset keys on focus loss
+    window.addEventListener("focus", resetKeys) // Reset keys on focus gain
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
       window.removeEventListener("keyup", handleKeyUp)
+      window.removeEventListener("blur", handleBlur)
+      window.removeEventListener("focus", resetKeys)
     }
-  }, [])
+  }, [levelIntro, gameOver]) // Add levelIntro and gameOver to dependencies
 
   // Mobile touch control handlers
   window.handleTouchStart = (direction: string) => {
@@ -1685,6 +1715,16 @@ export default function MolochGame() {
       
       ctx.textAlign = "right"
       ctx.fillText(`Level: ${state.level}`, GAME_WIDTH - 20, GAME_HEIGHT - BOTTOM_BORDER_WIDTH/2)
+
+      // Safety check: reset keys if they've been held for too long (stuck key detection)
+      if (!state.lastKeyResetTime) state.lastKeyResetTime = Date.now()
+      if (Date.now() - state.lastKeyResetTime > 10000) { // Reset every 10 seconds as safety
+        state.keys.left = false
+        state.keys.right = false
+        state.keys.up = false
+        state.keys.down = false
+        state.lastKeyResetTime = Date.now()
+      }
 
       // Update player position
       if (state.keys.left) {
