@@ -2854,7 +2854,7 @@ export default function MolochGame() {
       animationFrameId = requestAnimationFrame(gameLoop)
     }
 
-    gameLoop()
+    gameLoop();
 
     return () => {
       cancelAnimationFrame(animationFrameId)
@@ -3187,9 +3187,21 @@ export default function MolochGame() {
                 
                 {/* Up Button */}
                 <button 
-                  className="absolute w-14 h-14 top-0 left-1/2 -translate-x-1/2 flex items-center justify-center text-white text-xl"
-                  onTouchStart={() => window.handleTouchStart('up')}
-                  onTouchEnd={() => window.handleTouchEnd('up')}
+                  className="absolute w-14 h-14 top-0 left-1/2 -translate-x-1/2 flex items-center justify-center text-white text-xl select-none touch-manipulation bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg"
+                  style={{ 
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    window.handleTouchStart('up');
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    window.handleTouchEnd('up');
+                  }}
                   onMouseDown={() => window.handleTouchStart('up')}
                   onMouseUp={() => window.handleTouchEnd('up')}
                   onMouseLeave={() => window.handleTouchEnd('up')}
@@ -3199,9 +3211,21 @@ export default function MolochGame() {
                 
                 {/* Left Button */}
                 <button 
-                  className="absolute w-14 h-14 left-0 top-1/2 -translate-y-1/2 flex items-center justify-center text-white text-xl"
-                  onTouchStart={() => window.handleTouchStart('left')}
-                  onTouchEnd={() => window.handleTouchEnd('left')}
+                  className="absolute w-14 h-14 left-0 top-1/2 -translate-y-1/2 flex items-center justify-center text-white text-xl select-none touch-manipulation bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg"
+                  style={{ 
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    window.handleTouchStart('left');
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    window.handleTouchEnd('left');
+                  }}
                   onMouseDown={() => window.handleTouchStart('left')}
                   onMouseUp={() => window.handleTouchEnd('left')}
                   onMouseLeave={() => window.handleTouchEnd('left')}
@@ -3214,9 +3238,21 @@ export default function MolochGame() {
                 
                 {/* Right Button */}
                 <button 
-                  className="absolute w-14 h-14 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center text-white text-xl"
-                  onTouchStart={() => window.handleTouchStart('right')}
-                  onTouchEnd={() => window.handleTouchEnd('right')}
+                  className="absolute w-14 h-14 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center text-white text-xl select-none touch-manipulation bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg"
+                  style={{ 
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    window.handleTouchStart('right');
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    window.handleTouchEnd('right');
+                  }}
                   onMouseDown={() => window.handleTouchStart('right')}
                   onMouseUp={() => window.handleTouchEnd('right')}
                   onMouseLeave={() => window.handleTouchEnd('right')}
@@ -3226,9 +3262,21 @@ export default function MolochGame() {
                 
                 {/* Down Button */}
                 <button 
-                  className="absolute w-14 h-14 bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-center text-white text-xl"
-                  onTouchStart={() => window.handleTouchStart('down')}
-                  onTouchEnd={() => window.handleTouchEnd('down')}
+                  className="absolute w-14 h-14 bottom-0 left-1/2 -translate-x-1/2 flex items-center justify-center text-white text-xl select-none touch-manipulation bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-lg"
+                  style={{ 
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    window.handleTouchStart('down');
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    window.handleTouchEnd('down');
+                  }}
                   onMouseDown={() => window.handleTouchStart('down')}
                   onMouseUp={() => window.handleTouchEnd('down')}
                   onMouseLeave={() => window.handleTouchEnd('down')}
@@ -3241,9 +3289,21 @@ export default function MolochGame() {
               <div className="flex items-center justify-center">
                 <div className="-rotate-12 transform-gpu">
                   <button 
-                    className="w-20 h-20 rounded-full bg-red-600 text-white flex items-center justify-center text-sm font-bold border-2 border-red-800 shadow-inner"
-                    onTouchStart={() => window.handleTouchStart('shoot')}
-                    onTouchEnd={() => window.handleTouchEnd('shoot')}
+                    className="w-20 h-20 rounded-full bg-red-600 text-white flex items-center justify-center text-sm font-bold border-2 border-red-800 shadow-inner select-none touch-manipulation hover:bg-red-700 active:bg-red-500"
+                    style={{ 
+                      WebkitUserSelect: 'none',
+                      WebkitTouchCallout: 'none',
+                      WebkitTapHighlightColor: 'transparent',
+                      touchAction: 'manipulation'
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      window.handleTouchStart('shoot');
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      window.handleTouchEnd('shoot');
+                    }}
                     onMouseDown={() => window.handleTouchStart('shoot')}
                     onMouseUp={() => window.handleTouchEnd('shoot')}
                     onMouseLeave={() => window.handleTouchEnd('shoot')}
