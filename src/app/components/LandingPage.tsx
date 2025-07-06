@@ -256,6 +256,17 @@ export default function LandingPage() {
                       captain and game master.
                     </p>
 
+                    {/* Aqua Prime Intro Video */}
+                    <div className="mb-8 aspect-w-16 aspect-h-9">
+                      <iframe
+                        src="https://www.youtube.com/embed/VcccYEOimYo?start=0&rel=0"
+                        title="Welcome to Aqua Prime"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full rounded-lg border-2 border-purple-700/50 shadow-lg"
+                      />
+                    </div>
+
                     {/* Feature Cards */}
                     <div className="grid md:grid-cols-2 gap-6 my-8">
                       <div className="bg-purple-900/60 p-6 rounded-lg border border-purple-500/30 backdrop-blur-sm shadow-xl">
