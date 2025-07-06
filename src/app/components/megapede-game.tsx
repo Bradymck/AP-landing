@@ -1446,7 +1446,12 @@ export default function MolochGame() {
     state.lastSpiderSpawnTime = Date.now()
 
     // Sync with React state values
-    state.score = score // Preserve score during level progression, or use 0 for new game
+    // Only preserve score if it's a level progression (level > 1), otherwise reset to 0
+    if (level === 1) {
+      state.score = 0 // Always reset to 0 for new game
+    } else {
+      state.score = score // Preserve score during level progression
+    }
     state.level = level
     CURRENT_GAME_LEVEL = level // Update global level variable
     state.gameOver = false
@@ -1650,25 +1655,14 @@ export default function MolochGame() {
             )
             
             if (distance <= shockwaveRadius) {
-              // Damage the segment
-              if (segment.isArmored) {
-                segment.armorLevel--
-                if (segment.armorLevel <= 0) {
-                  segment.isArmored = false
-                  segment.color = segment.isHead ? "#FF0000" : "#00FF00"
-                }
-                if (soundManager) {
-                  soundManager.play('armor-hit')
-                }
-              } else {
-                segment.isAlive = false
-                if (soundManager) {
-                  soundManager.play('enemy-hit')
-                }
-                // Award points for shockwave kills
-                state.score += segment.isHead ? 100 : 50
-                enemiesHit++
+              // Instant kill - regardless of armor
+              segment.isAlive = false
+              if (soundManager) {
+                soundManager.play('enemy-hit')
               }
+              // Award points for shockwave kills
+              state.score += segment.isHead ? 100 : 50
+              enemiesHit++
             }
           }
         })
