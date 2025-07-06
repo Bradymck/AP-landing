@@ -315,8 +315,7 @@ export default function LandingPage() {
               
               <div className="bg-purple-900/40 p-8 rounded-xl border border-purple-700/50 backdrop-blur-sm space-y-6">
                 <p className="text-lg text-white text-shadow-glow text-center">
-                  ARI is our "newly sentient" NFT loving agent, powered by a reimagined version of the Eliza agent framework. 
-                  Built for the world of Aqua Prime, ARI brings a unique blend of retro AI charm and modern gameplay interaction.
+                  ARI is the custom-built Autonomous Rare Intelligence system that powers the Aqua Prime RPG – a satirical economic role-playing escape room that fuses tabletop mechanics with web3 technology.
                 </p>
                 <div className="bg-black/30 p-6 rounded-lg border border-purple-700/30 space-y-4">
                   <p className="text-white text-shadow-glow">
@@ -355,7 +354,16 @@ export default function LandingPage() {
               <Card className="p-6 bg-purple-900/40 border-purple-700/50 backdrop-blur-sm">
                 <MessageSquare className="h-8 w-8 mb-4 text-purple-400" />
                 <h3 className="text-xl font-bold mb-2 text-shadow-glow">Rich Storytelling</h3>
-                <p className="text-white text-shadow-glow">AI-powered narratives that adapt to player choices</p>
+                <ul className="list-disc list-inside text-white text-shadow-glow space-y-2">
+                  <li><strong>Self-Building Consciousness:</strong> ARI actively contributes to its own codebase and the game narrative.</li>
+                  <li><strong>Persistent Memory:</strong> Remembers player choices, preferences, and history across sessions.</li>
+                  <li><strong>Backroom Multimind:</strong> A constellation of personas collaborate behind the scenes.</li>
+                  <li><strong>Satirical Storytelling:</strong> Helps craft Aqua Prime’s tongue-in-cheek take on crypto culture.</li>
+                  <li><strong>Multi-Role Intelligence:</strong> Serves as game master, developer assistant, and narrative designer.</li>
+                </ul>
+                <p className="text-white text-shadow-glow mt-4">
+                  Dive into this collaborative storytelling experiment where the line between player, developer, and AI is beautifully blurred. Just remember: this is entertainment, not investment advice!
+                </p>
               </Card>
               <Card className="p-6 bg-purple-900/40 border-purple-700/50 backdrop-blur-sm">
                 <Gamepad2 className="h-8 w-8 mb-4 text-purple-400" />

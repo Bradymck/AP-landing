@@ -1449,6 +1449,7 @@ export default function MolochGame() {
     // Only preserve score if it's a level progression (level > 1), otherwise reset to 0
     if (level === 1) {
       state.score = 0 // Always reset to 0 for new game
+      setScore(0) // Also update React state
     } else {
       state.score = score // Preserve score during level progression
     }
@@ -3051,13 +3052,20 @@ export default function MolochGame() {
       await soundManager.enableAudio()
     }
     
+    // Immediately reset score in both state and ref
     setScore(0)
     setLevel(1)
     gameStateRef.current.score = 0
     gameStateRef.current.level = 1
     CURRENT_GAME_LEVEL = 1 // Ensure global level is reset
     
-    console.log(`🎮 Starting game at Level 1`)
+    // Force React to flush the state update immediately
+    const forceUpdate = () => {
+      setScore(0)
+    }
+    forceUpdate()
+    
+    console.log(`🎮 Starting game at Level 1 with score: 0`)
     
     // Start Level 1 with the same intro as other levels
     startLevelIntro()
@@ -3281,9 +3289,14 @@ export default function MolochGame() {
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
             <div className="text-center text-white">
               <h2 className="text-3xl font-bold mb-4">Game Over</h2>
-              <p className="text-xl mb-6">Final Score: {score}</p>
+              <p className="text-xl mb-6">Final Score: {gameStateRef.current.score}</p>
               <button
-                onClick={handleStartGame}
+                onClick={() => {
+                  // Immediately reset score to ensure it shows 0
+                  gameStateRef.current.score = 0;
+                  setScore(0);
+                  handleStartGame();
+                }}
                 className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full text-lg"
               >
                 Play Again
