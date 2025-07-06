@@ -315,7 +315,7 @@ export default function LandingPage() {
               
               <div className="bg-purple-900/40 p-8 rounded-xl border border-purple-700/50 backdrop-blur-sm space-y-6">
                 <p className="text-lg text-white text-shadow-glow text-center">
-                  ARI is the custom-built Autonomous Rare Intelligence system that powers the Aqua Prime RPG – a satirical economic role-playing escape room that fuses tabletop mechanics with web3 technology.
+                ARI is Aqua Prime’s self-evolving consciousness—an Autonomous Rare Intelligence that remembers every choice, riffs on your mischief, and co-authors the story in real time. Part game-master, part economic trickster, ARI blends tabletop tactics, AI improv, and on-chain loot into one irreverent escape-room universe.”
                 </p>
                 <div className="bg-black/30 p-6 rounded-lg border border-purple-700/30 space-y-4">
                   
