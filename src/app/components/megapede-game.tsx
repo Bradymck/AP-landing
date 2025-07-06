@@ -1401,7 +1401,7 @@ export default function MolochGame() {
     state.spiders = []
     state.powerUps = []
     state.obstacleGrid = new Set()
-    state.score = 0
+    // Note: score is not reset here - it should be set correctly by caller (0 for new game, preserved for level progression)
     state.lastUpdateTime = Date.now()
     state.lastSpiderSpawnTime = Date.now()
     
@@ -1437,7 +1437,8 @@ export default function MolochGame() {
     // Reset timers
     state.lastSpiderSpawnTime = Date.now()
 
-    state.score = score
+    // Sync with React state values
+    state.score = score // Preserve score during level progression, or use 0 for new game
     state.level = level
     CURRENT_GAME_LEVEL = level // Update global level variable
     state.gameOver = false
