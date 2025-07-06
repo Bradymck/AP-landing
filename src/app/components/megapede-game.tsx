@@ -512,6 +512,7 @@ class MolochSegment {
   emoji = ""
   reachedBottom = false
   size: number // Add size property
+  triggerRoundTrip?: () => void // Callback for round trip completion
 
   constructor(position: Vector2, direction: number, stepSize: number, isHead: boolean) {
     this.position = position
@@ -579,6 +580,11 @@ class MolochSegment {
         if (this.isArmored && this.armorLevel <= 6) {
           this.isArmored = false
           this.armorLevel = 0
+        }
+        
+        // Trigger round trip completion for head segments only
+        if (this.isHead) {
+          this.triggerRoundTrip?.()
         }
       }
     }
@@ -1234,6 +1240,12 @@ export default function MolochGame() {
     level: 1,
     gameOver: false,
     levelEmoji: "",
+    // Enhanced wave management
+    centipedeWave: 1, // Current wave number (1 or 2)
+    maxWaves: 2, // Total waves per level
+    centipedesSpawned: 0, // How many centipedes spawned this level
+    maxCentipedesPerWave: 2, // Up to 2 centipedes per wave
+    roundTripTriggers: 0, // Track round trips to spawn additional centipedes
   })
 
   // Create particles when mushroom is hit
@@ -1310,6 +1322,46 @@ export default function MolochGame() {
   }
 
   // Initialize game
+  // Function to spawn a new centipede
+  const spawnCentipede = () => {
+    const state = gameStateRef.current
+    
+    // Check if we can spawn more centipedes this wave
+    if (state.centipedesSpawned >= state.maxCentipedesPerWave) {
+      return
+    }
+    
+    // Create Moloch centipede chain with length based on level
+    const bonusSegments = state.level - 1 // One extra segment per level
+    const segmentCount = BASE_SEGMENT_COUNT + bonusSegments
+    
+    const startX = Math.random() > 0.5 ? BORDER_WIDTH : GAME_WIDTH - BORDER_WIDTH - SEGMENT_SIZE
+    const direction = startX === BORDER_WIDTH ? 1 : -1
+    const startY = SEGMENT_SIZE + BORDER_WIDTH
+
+    // Create the Moloch centipede chain
+    const molochChain = new MolochChain(segmentCount, { x: startX, y: startY }, direction, SEGMENT_SIZE)
+    
+    // Set up round trip callback for the head segment
+    if (molochChain.segments.length > 0 && molochChain.segments[0].isHead) {
+      molochChain.segments[0].triggerRoundTrip = () => {
+        const currentState = gameStateRef.current
+        currentState.roundTripTriggers++
+        console.log(`🔄 Round trip completed! Triggers: ${currentState.roundTripTriggers}`)
+        
+        // Spawn additional centipede after round trip (if under limits)
+        if (currentState.centipedesSpawned < currentState.maxCentipedesPerWave) {
+          setTimeout(() => spawnCentipede(), 1000) // Small delay for drama
+        }
+      }
+    }
+
+    state.molochChains.push(molochChain)
+    state.centipedesSpawned++
+    
+    console.log(`🐛 Spawned centipede ${state.centipedesSpawned}/${state.maxCentipedesPerWave} for wave ${state.centipedeWave}`)
+  }
+
   const initGame = () => {
     setGameStarted(true)
     setGameOver(false)
@@ -1349,7 +1401,6 @@ export default function MolochGame() {
     state.powerUps = []
     state.obstacleGrid = new Set()
     state.score = 0
-    state.level = 1
     state.lastUpdateTime = Date.now()
     state.lastSpiderSpawnTime = Date.now()
     
@@ -1375,20 +1426,13 @@ export default function MolochGame() {
       createMushroom(mushroomX, mushroomY)
     }
 
-    // Create Moloch centipede chain with length based on level
-    // Base length + bonus segments every SEGMENTS_INCREASE_LEVEL levels
-    // Add one segment for every level instead of 4 segments every few levels
-    const bonusSegments = state.level - 1 // One extra segment per level
-    const segmentCount = BASE_SEGMENT_COUNT + bonusSegments
+    // Reset wave tracking for new level
+    state.centipedeWave = 1
+    state.centipedesSpawned = 0
+    state.roundTripTriggers = 0
     
-    const startX = Math.random() > 0.5 ? BORDER_WIDTH : GAME_WIDTH - BORDER_WIDTH - SEGMENT_SIZE
-    const direction = startX === BORDER_WIDTH ? 1 : -1
-    const startY = SEGMENT_SIZE + BORDER_WIDTH
-
-    // The Moloch centipede constructor will use the global CURRENT_GAME_LEVEL variable
-    const molochChain = new MolochChain(segmentCount, { x: startX, y: startY }, direction, SEGMENT_SIZE)
-
-    state.molochChains.push(molochChain)
+    // Spawn initial centipede for the level
+    spawnCentipede()
 
     // Reset timers
     state.lastSpiderSpawnTime = Date.now()
@@ -2708,16 +2752,37 @@ export default function MolochGame() {
 
       // Check if all Moloch centipede chains are destroyed
       if (state.molochChains.length === 0) {
-        state.level++
-        setLevel(state.level)
-        
-        // Stop all audio so level intro quote can be heard clearly
-        if (soundManager) {
-          soundManager.stopMusic()
-          soundManager.stopAllBulletLoops()
+        // Check if we should spawn the next wave or advance to next level
+        if (state.centipedeWave < state.maxWaves) {
+          // Start next wave
+          state.centipedeWave++
+          state.centipedesSpawned = 0
+          state.roundTripTriggers = 0
+          console.log(`🌊 Starting wave ${state.centipedeWave} of level ${state.level}`)
+          
+          // Spawn first centipede of new wave
+          spawnCentipede()
+        } else {
+          // All waves complete, advance to next level
+          state.level++
+          setLevel(state.level)
+          CURRENT_GAME_LEVEL = state.level
+          
+          // Reset wave tracking for new level
+          state.centipedeWave = 1
+          state.centipedesSpawned = 0
+          state.roundTripTriggers = 0
+          
+          console.log(`🏆 Advancing to Level ${state.level}`)
+          
+          // Stop all audio so level intro quote can be heard clearly
+          if (soundManager) {
+            soundManager.stopMusic()
+            soundManager.stopAllBulletLoops()
+          }
+          
+          startLevelIntro()
         }
-        
-        startLevelIntro()
       }
 
       // Update score state
