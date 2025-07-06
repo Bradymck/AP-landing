@@ -257,7 +257,7 @@ export default function LandingPage() {
                     </p>
 
                     {/* Aqua Prime Intro Video */}
-                    <div className="mb-8 aspect-w-16 aspect-h-9">
+                    <div className="mb-8 w-full h-56 sm:h-72 md:h-96 lg:h-[500px]">
                       <iframe
                         src="https://www.youtube.com/embed/VcccYEOimYo?start=0&rel=0"
                         title="Welcome to Aqua Prime"
