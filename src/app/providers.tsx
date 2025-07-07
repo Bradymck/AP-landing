@@ -3,16 +3,23 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { WagmiProvider, createConfig, http } from 'wagmi'
-import { base, baseSepolia } from 'wagmi/chains'
+import { base, baseSepolia, mainnet, gnosis } from 'wagmi/chains'
+import { injected, walletConnect } from 'wagmi/connectors'
 
-// Use Base mainnet if you have ARI tokens on Base mainnet
-// Use baseSepolia if you have ARI tokens on Base Sepolia testnet
-const selectedChain = base  // Change this to baseSepolia if needed
-
+// Support multiple chains for seamless switching
 export const config = createConfig({
-  chains: [selectedChain],
+  chains: [base, baseSepolia, mainnet, gnosis], // Add common chains user might be on
+  connectors: [
+    injected(), // MetaMask, Rabby, etc.
+    walletConnect({ 
+      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'fallback' 
+    }),
+  ],
   transports: {
-    [selectedChain.id]: http(),
+    [base.id]: http(),
+    [baseSepolia.id]: http(),
+    [mainnet.id]: http(),
+    [gnosis.id]: http(),
   },
 })
 
