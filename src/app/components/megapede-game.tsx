@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useReadContract, useChainId, useSwitchChain } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { parseEther, parseUnits } from 'viem'
+import { base } from 'wagmi/chains'
 
 // ARI Token Contract Details (from .env)
 const ARI_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_TOKEN_TO_BURN_ADDRESS as `0x${string}` || '0xDd33A2644D72324fE453036c78296AC90AEd2E2f'
@@ -1276,6 +1277,8 @@ export default function MolochGame() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
+  const chainId = useChainId()
+  const { switchChain } = useSwitchChain()
   
   // Contract hooks
   const { data: ariBalance } = useReadContract({
@@ -1642,6 +1645,19 @@ export default function MolochGame() {
   const burnTokens = async () => {
     if (!address || !ariBalance) return
     
+    // Check if we're on the correct chain (Base)
+    if (chainId !== base.id) {
+      try {
+        await switchChain({ chainId: base.id })
+        // Wait a moment for the chain switch to complete
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      } catch (error) {
+        console.error('Error switching to Base network:', error)
+        alert('Please switch to Base network in your wallet to continue.')
+        return
+      }
+    }
+    
     // Check if user has enough ARI tokens
     const requiredAmount = BigInt(REQUIRED_BURN_AMOUNT)
     if (ariBalance < requiredAmount) {
@@ -1656,6 +1672,7 @@ export default function MolochGame() {
         abi: ERC20_ABI,
         functionName: 'burn',
         args: [requiredAmount],
+        chainId: base.id,
       })
     } catch (error) {
       console.error('Error burning tokens:', error)
