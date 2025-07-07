@@ -1772,6 +1772,8 @@ export default function MolochGame() {
     if (!address || !rewardSignature) return
     
     console.log('Starting claim process with signature:', rewardSignature)
+    console.log('Claiming for address:', address)
+    console.log('Faucet contract address:', FAUCET_CONTRACT_ADDRESS)
     
     try {
       // Convert amount to Wei (assuming amount is in tokens with 18 decimals)
@@ -1780,7 +1782,9 @@ export default function MolochGame() {
       console.log('Calling faucet contract claimReward with:', {
         amount: amountInWei.toString(),
         nonce: rewardSignature.nonce,
-        signature: rewardSignature.signature
+        signature: rewardSignature.signature,
+        contractAddress: FAUCET_CONTRACT_ADDRESS,
+        playerAddress: address
       })
       
       // Call the faucet contract

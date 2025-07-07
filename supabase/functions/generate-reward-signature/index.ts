@@ -35,17 +35,20 @@ serve(async (req) => {
     // Generate nonce (timestamp + random)
     const nonce = Date.now().toString() + Math.random().toString(36).substring(2)
 
-    // Create message to sign - standard format for faucet contracts
-    // Message format: keccak256(abi.encodePacked(playerAddress, amount, nonce))
+    // Create message to sign - this must match EXACTLY what the contract expects
     const amountInWei = ethers.parseEther(rewardAmount)
     
-    // Create the message hash that the contract expects
-    const messageHash = ethers.solidityPackedKeccak256(
+    // Create the packed message (not hashed yet)
+    const packedMessage = ethers.solidityPacked(
       ['address', 'uint256', 'string'],
       [playerAddress, amountInWei, nonce]
     )
-
-    // Sign the message hash directly (not the bytes)
+    
+    // Hash the packed message
+    const messageHash = ethers.keccak256(packedMessage)
+    
+    // Sign the hash using signMessage (which adds EIP-191 prefix automatically)
+    // This is equivalent to signing with personal_sign in web3
     const signature = await wallet.signMessage(ethers.getBytes(messageHash))
     
     console.log('Signature generated:', {
@@ -53,8 +56,12 @@ serve(async (req) => {
       signature: signature,
       nonce: nonce,
       playerAddress: playerAddress,
-      amountInWei: amountInWei.toString()
+      amountInWei: amountInWei.toString(),
+      signerAddress: wallet.address,
+      packedMessage: packedMessage
     })
+    
+    console.log('IMPORTANT: Make sure the faucet contract has this signer address set:', wallet.address)
 
     return new Response(
       JSON.stringify({
