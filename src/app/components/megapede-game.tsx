@@ -1278,7 +1278,17 @@ export default function MolochGame() {
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
-  const { switchChain } = useSwitchChain()
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain({
+    mutation: {
+      onSuccess: () => {
+        console.log('Successfully switched to Base network')
+      },
+      onError: (error) => {
+        console.error('Network switch error:', error)
+        setIsBurning(false)
+      }
+    }
+  })
   
   // Contract hooks
   const { data: ariBalance } = useReadContract({
@@ -1645,28 +1655,23 @@ export default function MolochGame() {
   const burnTokens = async () => {
     if (!address || !ariBalance) return
     
-    // Check if we're on the correct chain (Base)
-    if (chainId !== base.id) {
-      try {
-        await switchChain({ chainId: base.id })
-        // Wait a moment for the chain switch to complete
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      } catch (error) {
-        console.error('Error switching to Base network:', error)
-        alert('Please switch to Base network in your wallet to continue.')
-        return
-      }
-    }
-    
     // Check if user has enough ARI tokens
     const requiredAmount = BigInt(REQUIRED_BURN_AMOUNT)
     if (ariBalance < requiredAmount) {
-      alert(`Insufficient ARI tokens. You need at least ${REQUIRED_BURN_AMOUNT} tokens to play.`)
-      return
+      return // Silently return, UI will show insufficient balance state
     }
     
+    setIsBurning(true)
+    
     try {
-      setIsBurning(true)
+      // If we're not on Base, seamlessly switch networks
+      if (chainId !== base.id) {
+        await switchChain({ chainId: base.id })
+        // Give the network switch a moment to complete
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+      
+      // Execute the burn transaction
       writeContract({
         address: ARI_TOKEN_ADDRESS,
         abi: ERC20_ABI,
@@ -1675,7 +1680,7 @@ export default function MolochGame() {
         chainId: base.id,
       })
     } catch (error) {
-      console.error('Error burning tokens:', error)
+      console.error('Error in burn process:', error)
       setIsBurning(false)
     }
   }
@@ -3632,6 +3637,18 @@ export default function MolochGame() {
               </p>
             )}
             
+            {chainId !== base.id && !isSwitchingChain && (
+              <p className="text-sm text-blue-400 mb-4">
+                🔄 Will switch to Base network when you burn
+              </p>
+            )}
+            
+            {isSwitchingChain && (
+              <p className="text-sm text-blue-400 mb-4">
+                🔄 Switching to Base network...
+              </p>
+            )}
+            
             {burnTransaction && (
               <p className="text-sm text-green-400 mb-4">
                 ✅ Burned! Tx: {burnTransaction.slice(0, 10)}...
@@ -3640,12 +3657,14 @@ export default function MolochGame() {
             
             <button
               onClick={burnTokens}
-              disabled={isBurning || hasBurnedTokens || !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT)}
+              disabled={isBurning || isSwitchingChain || hasBurnedTokens || !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT)}
               className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all disabled:transform-none mb-4"
             >
-              {isBurning ? '🔥 Burning...' : 
+              {isSwitchingChain ? '🔄 Switching Network...' :
+               isBurning ? '🔥 Burning...' : 
                hasBurnedTokens ? '✅ Burned!' : 
                !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT) ? '❌ Insufficient ARI' :
+               chainId !== base.id ? '🔄 Burn 1 ARI Token' :
                '🔥 Burn 1 ARI Token'}
             </button>
             
