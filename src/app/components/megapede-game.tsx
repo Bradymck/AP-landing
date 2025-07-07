@@ -3660,14 +3660,19 @@ export default function MolochGame() {
             
             <button
               onClick={burnTokens}
-              disabled={isBurning || isSwitchingChain || hasBurnedTokens || !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT)}
+              disabled={
+                isBurning || 
+                isSwitchingChain || 
+                hasBurnedTokens || 
+                (chainId === base.id && (!ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT)))
+              }
               className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all disabled:transform-none mb-4"
             >
               {isSwitchingChain ? '🔄 Switching to Base...' :
                isBurning ? '🔥 Burning...' : 
                hasBurnedTokens ? '✅ Burned!' : 
-               !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT) ? '❌ Insufficient ARI' :
                chainId !== base.id ? '🔄 Switch to Base' :
+               !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT) ? '❌ Insufficient ARI' :
                '🔥 Burn 1 ARI Token'}
             </button>
             
