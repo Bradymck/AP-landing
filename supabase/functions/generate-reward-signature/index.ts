@@ -35,15 +35,17 @@ serve(async (req) => {
     // Generate numeric nonce (timestamp + random number)
     // Use timestamp in seconds + random 6 digits to ensure uniqueness and avoid overflow
     const nonce = Math.floor(Date.now() / 1000) * 1000000 + Math.floor(Math.random() * 1000000)
+    const nonceString = nonce.toString()
 
     // Create message to sign - this must match EXACTLY what the contract expects
     const amountInWei = ethers.parseEther(rewardAmount)
     
     // Create the packed message (not hashed yet)
     // Contract expects: keccak256(abi.encodePacked(msg.sender, _amount, _nonce))
+    // Since contract expects nonce as string, we need to pack it as string
     const packedMessage = ethers.solidityPacked(
-      ['address', 'uint256', 'uint256'],
-      [playerAddress, amountInWei, nonce]
+      ['address', 'uint256', 'string'],
+      [playerAddress, amountInWei, nonceString]
     )
     
     // Hash the packed message
@@ -56,7 +58,7 @@ serve(async (req) => {
     console.log('Signature generated:', {
       messageHash: messageHash,
       signature: signature,
-      nonce: nonce,
+      nonce: nonceString,
       playerAddress: playerAddress,
       amountInWei: amountInWei.toString(),
       signerAddress: wallet.address,
@@ -68,7 +70,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         signature,
-        nonce: nonce.toString(),
+        nonce: nonceString,
         messageHash,
         signerAddress: wallet.address
       }),

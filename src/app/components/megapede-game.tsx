@@ -1589,14 +1589,14 @@ export default function MolochGame() {
 
     // Sync with React state values
     // Only preserve score if it's a level progression (level > 1), otherwise reset to 0
-    if (level === 1) {
+    if (state.level === 1) {
       state.score = 0 // Always reset to 0 for new game
       setScore(0) // Also update React state
     } else {
       state.score = score // Preserve score during level progression
     }
-    state.level = level
-    CURRENT_GAME_LEVEL = level // Update global level variable
+    // Note: Don't overwrite state.level here - it's already set correctly by the game loop
+    CURRENT_GAME_LEVEL = state.level // Update global level variable to match state
     state.gameOver = false
 
     setGameStarted(true)
@@ -1977,16 +1977,8 @@ export default function MolochGame() {
     if (direction === "shoot") state.keys.space = false
   }
 
-  // Game loop
+  // Load images once on mount
   useEffect(() => {
-    if (!gameStarted || levelIntro) return
-
-    let animationFrameId: number
-    const canvas = canvasRef.current
-    const ctx = canvas?.getContext("2d")
-
-    if (!canvas || !ctx) return
-
     // Load the ship image with error handling
     const shipImage = new Image()
     shipImage.onload = () => {
@@ -2012,6 +2004,17 @@ export default function MolochGame() {
     // Check multiple possible locations for this file
     hungryImage.src = '/ICON.png' // Use ICON.png as requested
     hungryImageRef.current = hungryImage
+  }, []) // Empty dependency array - only run once on mount
+
+  // Game loop
+  useEffect(() => {
+    if (!gameStarted || levelIntro) return
+
+    let animationFrameId: number
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext("2d")
+
+    if (!canvas || !ctx) return
 
     // Resize canvas
     canvas.width = GAME_WIDTH
