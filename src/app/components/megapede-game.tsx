@@ -1653,25 +1653,39 @@ export default function MolochGame() {
 
   // Burn ARI tokens function
   const burnTokens = async () => {
-    if (!address || !ariBalance) return
+    console.log('burnTokens called - chainId:', chainId, 'base.id:', base.id)
     
-    // Check if user has enough ARI tokens
-    const requiredAmount = BigInt(REQUIRED_BURN_AMOUNT)
-    if (ariBalance < requiredAmount) {
-      return // Silently return, UI will show insufficient balance state
+    if (!address) {
+      console.log('No address connected')
+      return
     }
     
     // If we're not on Base, just trigger the switch - don't proceed with burn yet
     if (chainId !== base.id) {
+      console.log('Not on Base network, attempting to switch...')
       try {
+        console.log('Calling switchChain with chainId:', base.id)
         await switchChain({ chainId: base.id })
+        console.log('switchChain call completed')
       } catch (error) {
         console.error('Error switching chain:', error)
       }
       return // Exit here, user will need to click burn again once on Base
     }
     
-    // We're on Base, proceed with burn
+    // We're on Base, check ARI balance and proceed with burn
+    if (!ariBalance) {
+      console.log('No ARI balance data')
+      return
+    }
+    
+    const requiredAmount = BigInt(REQUIRED_BURN_AMOUNT)
+    if (ariBalance < requiredAmount) {
+      console.log('Insufficient ARI balance:', ariBalance.toString(), 'required:', requiredAmount.toString())
+      return
+    }
+    
+    console.log('Proceeding with burn transaction')
     setIsBurning(true)
     
     try {
