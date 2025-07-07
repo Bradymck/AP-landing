@@ -1661,26 +1661,28 @@ export default function MolochGame() {
       return // Silently return, UI will show insufficient balance state
     }
     
+    // If we're not on Base, just trigger the switch - don't proceed with burn yet
+    if (chainId !== base.id) {
+      try {
+        await switchChain({ chainId: base.id })
+      } catch (error) {
+        console.error('Error switching chain:', error)
+      }
+      return // Exit here, user will need to click burn again once on Base
+    }
+    
+    // We're on Base, proceed with burn
     setIsBurning(true)
     
     try {
-      // If we're not on Base, seamlessly switch networks
-      if (chainId !== base.id) {
-        await switchChain({ chainId: base.id })
-        // Give the network switch a moment to complete
-        await new Promise(resolve => setTimeout(resolve, 500))
-      }
-      
-      // Execute the burn transaction
       writeContract({
         address: ARI_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: 'burn',
         args: [requiredAmount],
-        chainId: base.id,
       })
     } catch (error) {
-      console.error('Error in burn process:', error)
+      console.error('Error burning tokens:', error)
       setIsBurning(false)
     }
   }
@@ -3639,7 +3641,7 @@ export default function MolochGame() {
             
             {chainId !== base.id && !isSwitchingChain && (
               <p className="text-sm text-blue-400 mb-4">
-                🔄 Will switch to Base network when you burn
+                🔄 Click to switch to Base network first
               </p>
             )}
             
@@ -3660,11 +3662,11 @@ export default function MolochGame() {
               disabled={isBurning || isSwitchingChain || hasBurnedTokens || !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT)}
               className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all disabled:transform-none mb-4"
             >
-              {isSwitchingChain ? '🔄 Switching Network...' :
+              {isSwitchingChain ? '🔄 Switching to Base...' :
                isBurning ? '🔥 Burning...' : 
                hasBurnedTokens ? '✅ Burned!' : 
                !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT) ? '❌ Insufficient ARI' :
-               chainId !== base.id ? '🔄 Burn 1 ARI Token' :
+               chainId !== base.id ? '🔄 Switch to Base' :
                '🔥 Burn 1 ARI Token'}
             </button>
             
