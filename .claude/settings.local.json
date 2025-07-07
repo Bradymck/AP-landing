@@ -28,7 +28,13 @@
       "Bash(mv:*)",
       "mcp__ide__getDiagnostics",
       "Bash(git checkout:*)",
-      "Bash(npx next dev:*)"
+      "Bash(npx next dev:*)",
+      "Bash(env)",
+      "Bash(HOST=localhost npm run dev)",
+      "Bash(unset HOSTNAME)",
+      "Bash(echo:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(supabase db:*)"
     ],
     "deny": []
   }

@@ -1,6 +1,31 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
+import { injected } from 'wagmi/connectors'
+import { parseEther, parseUnits } from 'viem'
+
+// ARI Token Contract Details (from .env)
+const ARI_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_TOKEN_TO_BURN_ADDRESS as `0x${string}` || '0xDd33A2644D72324fE453036c78296AC90AEd2E2f'
+const REQUIRED_BURN_AMOUNT = process.env.NEXT_PUBLIC_REQUIRED_BURN_AMOUNT || '1000000000000000000' // 1 ARI token
+
+// ERC20 ABI for burn function
+const ERC20_ABI = [
+  {
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    name: 'burn',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  },
+  {
+    inputs: [{ name: 'account', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+  }
+] as const
 
 // Sound System
 class SoundManager {
@@ -1235,6 +1260,36 @@ export default function MolochGame() {
   const [showControls, setShowControls] = useState(false)
   const [sfxMuted, setSfxMuted] = useState(false)
   const [musicMuted, setMusicMuted] = useState(false)
+  const [isClaimingReward, setIsClaimingReward] = useState(false)
+  const [rewardSignature, setRewardSignature] = useState<{amount: string, nonce: string, signature: string} | null>(null)
+  const [hasClaimed, setHasClaimed] = useState(false)
+  
+  // Game flow states
+  const [gamePhase, setGamePhase] = useState<'connect' | 'burn' | 'ready' | 'playing' | 'gameover' | 'leaderboard'>('connect')
+  const [hasBurnedTokens, setHasBurnedTokens] = useState(false)
+  const [isBurning, setIsBurning] = useState(false)
+  const [burnTransaction, setBurnTransaction] = useState<string | null>(null)
+  const [leaderboard, setLeaderboard] = useState<Array<{address: string, score: number, claimed: boolean}>>([])
+  const [hasSubmittedScore, setHasSubmittedScore] = useState(false)
+  
+  // Wallet hooks
+  const { address, isConnected } = useAccount()
+  const { connect } = useConnect()
+  const { disconnect } = useDisconnect()
+  
+  // Contract hooks
+  const { data: ariBalance } = useReadContract({
+    address: ARI_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+  })
+  
+  const { writeContract, data: burnTxHash, isPending: isBurnPending, error: burnError } = useWriteContract()
+  
+  const { isLoading: isBurnConfirming, isSuccess: isBurnConfirmed } = useWaitForTransactionReceipt({
+    hash: burnTxHash,
+  })
   
   // Create image for player ship and spider
   const shipImageRef = useRef<HTMLImageElement | null>(null)
@@ -1508,6 +1563,182 @@ export default function MolochGame() {
 
     setGameStarted(true)
     setGameOver(false)
+  }
+
+  // Handle wallet connection effect
+  useEffect(() => {
+    if (isConnected && address && gamePhase === 'connect') {
+      checkExistingBurn(address)
+    } else if (!isConnected && gamePhase !== 'connect') {
+      setGamePhase('connect')
+      setHasBurnedTokens(false)
+      setBurnTransaction(null)
+    }
+  }, [isConnected, address, gamePhase])
+
+  // Check if user already has a verified burn
+  const checkExistingBurn = async (userAddress: string) => {
+    try {
+      const response = await fetch(`/api/verify-burn?address=${userAddress}`)
+      const result = await response.json()
+      
+      if (result.hasVerifiedBurn && result.canPlay) {
+        setHasBurnedTokens(true)
+        setBurnTransaction(result.burnData.tx_hash)
+        setGamePhase('ready')
+      } else {
+        setGamePhase('burn')
+      }
+    } catch (error) {
+      console.error('Failed to check existing burn:', error)
+      setGamePhase('burn')
+    }
+  }
+
+  // Handle burn confirmation - now with server verification
+  useEffect(() => {
+    if (isBurnConfirmed && burnTxHash && address) {
+      verifyBurnOnServer(burnTxHash)
+    }
+  }, [isBurnConfirmed, burnTxHash, address])
+
+  // Verify burn transaction on server
+  const verifyBurnOnServer = async (txHash: string) => {
+    try {
+      const response = await fetch('/api/verify-burn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          txHash,
+          userAddress: address
+        })
+      })
+
+      const result = await response.json()
+      
+      if (result.verified && result.canPlay) {
+        setBurnTransaction(txHash)
+        setHasBurnedTokens(true)
+        setGamePhase('ready')
+      } else {
+        alert(result.error || 'Burn verification failed')
+        setHasBurnedTokens(false)
+      }
+    } catch (error) {
+      console.error('Server verification failed:', error)
+      alert('Failed to verify burn on server')
+      setHasBurnedTokens(false)
+    } finally {
+      setIsBurning(false)
+    }
+  }
+
+  // Handle burn status
+  useEffect(() => {
+    if (isBurnPending || isBurnConfirming) {
+      setIsBurning(true)
+    } else if (burnError) {
+      setIsBurning(false)
+      console.error('Burn error:', burnError)
+    }
+  }, [isBurnPending, isBurnConfirming, burnError])
+
+  // Burn ARI tokens function
+  const burnTokens = async () => {
+    if (!address || !ariBalance) return
+    
+    // Check if user has enough ARI tokens
+    const requiredAmount = BigInt(REQUIRED_BURN_AMOUNT)
+    if (ariBalance < requiredAmount) {
+      alert(`Insufficient ARI tokens. You need at least ${REQUIRED_BURN_AMOUNT} tokens to play.`)
+      return
+    }
+    
+    try {
+      setIsBurning(true)
+      writeContract({
+        address: ARI_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: 'burn',
+        args: [requiredAmount],
+      })
+    } catch (error) {
+      console.error('Error burning tokens:', error)
+      setIsBurning(false)
+    }
+  }
+
+  // Submit high score and get reward signature
+  const submitHighScore = async () => {
+    if (!address || !gameStateRef.current.score) return
+    
+    setIsClaimingReward(true)
+    try {
+      const response = await fetch('/api/generate-reward-signature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address,
+          score: gameStateRef.current.score
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setRewardSignature(data)
+        setHasSubmittedScore(true)
+        // Add to leaderboard
+        const newEntry = { address, score: gameStateRef.current.score, claimed: false }
+        setLeaderboard(prev => [...prev, newEntry].sort((a, b) => b.score - a.score))
+        setGamePhase('leaderboard')
+      } else {
+        console.error('Failed to get reward signature')
+      }
+    } catch (error) {
+      console.error('Error submitting high score:', error)
+    } finally {
+      setIsClaimingReward(false)
+    }
+  }
+
+  // Start game function (only allowed after burning)
+  const startGame = () => {
+    if (!hasBurnedTokens || !burnTransaction) {
+      alert('You must burn ARI tokens before playing!')
+      return
+    }
+    setGamePhase('playing')
+    setGameStarted(true)
+    setGameOver(false)
+    handleStartGame()
+  }
+
+  // Handle game over detection
+  useEffect(() => {
+    if (gameOver && gamePhase === 'playing') {
+      setGamePhase('gameover')
+      setGameStarted(false)
+      // Mark the burn as used when game ends
+      markBurnAsUsed()
+    }
+  }, [gameOver, gamePhase])
+
+  // Mark burn as used in database
+  const markBurnAsUsed = async () => {
+    if (!address || !burnTransaction) return
+    
+    try {
+      await fetch('/api/mark-burn-used', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userAddress: address,
+          txHash: burnTransaction
+        })
+      })
+    } catch (error) {
+      console.error('Failed to mark burn as used:', error)
+    }
   }
 
   // Handle keyboard input
@@ -3341,23 +3572,102 @@ export default function MolochGame() {
       
       {/* Game Over Screen - now moved to canvas section */}
       
-      {/* Start Game Screen */}
-      {!gameStarted && !gameOver && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 z-30">
-          <div className="text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">Moloch Centipede</h2>
-            <p className="text-xl mb-6 px-4">
+      {/* Game Flow Screens */}
+      {gamePhase === 'connect' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-purple-900 via-blue-900 to-black bg-opacity-95 z-30">
+          <div className="text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-80 rounded-xl border border-purple-500">
+            <h2 className="text-4xl font-bold mb-6 text-cyan-400">🕹️ Moloch Centipede</h2>
+            <p className="text-lg mb-6 text-gray-300">
+              Connect your wallet to start playing and earn ARI token rewards!
+            </p>
+            <button
+              onClick={() => connect({ connector: injected() })}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all"
+            >
+              🔗 Connect Wallet
+            </button>
+          </div>
+        </div>
+      )}
+
+      {gamePhase === 'burn' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 via-orange-900 to-black bg-opacity-95 z-30">
+          <div className="text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-80 rounded-xl border border-orange-500">
+            <h2 className="text-3xl font-bold mb-4 text-orange-400">🔥 Burn ARI Tokens</h2>
+            <p className="text-xs text-gray-400 mb-2">Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
+            <p className="text-sm text-yellow-400 mb-4">
+              Balance: {ariBalance ? (Number(ariBalance) / 1e18).toFixed(2) : '0'} ARI
+            </p>
+            <p className="text-lg mb-6 text-gray-300">
+              Burn 1 ARI token to unlock the game and become eligible for rewards!
+            </p>
+            
+            {burnError && (
+              <p className="text-sm text-red-400 mb-4">
+                ❌ Error: {burnError.message}
+              </p>
+            )}
+            
+            {isBurnPending && (
+              <p className="text-sm text-yellow-400 mb-4">
+                ⏳ Transaction pending... Please confirm in your wallet
+              </p>
+            )}
+            
+            {isBurnConfirming && (
+              <p className="text-sm text-blue-400 mb-4">
+                ⏳ Confirming transaction...
+              </p>
+            )}
+            
+            {burnTransaction && (
+              <p className="text-sm text-green-400 mb-4">
+                ✅ Burned! Tx: {burnTransaction.slice(0, 10)}...
+              </p>
+            )}
+            
+            <button
+              onClick={burnTokens}
+              disabled={isBurning || hasBurnedTokens || !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT)}
+              className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all disabled:transform-none mb-4"
+            >
+              {isBurning ? '🔥 Burning...' : 
+               hasBurnedTokens ? '✅ Burned!' : 
+               !ariBalance || ariBalance < BigInt(REQUIRED_BURN_AMOUNT) ? '❌ Insufficient ARI' :
+               '🔥 Burn 1 ARI Token'}
+            </button>
+            
+            <div>
+              <button
+                onClick={() => disconnect()}
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full text-sm"
+              >
+                Disconnect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {gamePhase === 'ready' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-green-900 via-blue-900 to-black bg-opacity-95 z-30">
+          <div className="text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-80 rounded-xl border border-green-500">
+            <h2 className="text-4xl font-bold mb-6 text-green-400">🎮 Ready to Play!</h2>
+            <p className="text-lg mb-6 text-gray-300">
               {isMobile ? (
                 <>Use the on-screen controls to play.<br />Destroy the Moloch centipede before it reaches you!</>
               ) : (
                 <>Use arrow keys to move and space to shoot.<br />Destroy the Moloch centipede before it reaches the bottom!</>
               )}
             </p>
+            <p className="text-sm text-yellow-400 mb-6">
+              Your high score will be submitted automatically when the game ends!
+            </p>
             <button
-              onClick={handleStartGame}
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full text-lg"
+              onClick={startGame}
+              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all"
             >
-              Start Game
+              🚀 Start Game
             </button>
           </div>
         </div>
@@ -3373,22 +3683,138 @@ export default function MolochGame() {
         />
         
         {/* Game Over screen overlay */}
-        {gameOver && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
-            <div className="text-center text-white">
-              <h2 className="text-3xl font-bold mb-4">Game Over</h2>
-              <p className="text-xl mb-6">Final Score: {gameStateRef.current.score}</p>
+        {gamePhase === 'gameover' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 via-purple-900 to-black bg-opacity-95 z-10">
+            <div className="text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-90 rounded-xl border border-red-500">
+              <h2 className="text-4xl font-bold mb-4 text-red-400">💀 Game Over</h2>
+              <p className="text-2xl mb-6 text-yellow-400">Final Score: {gameStateRef.current.score}</p>
+              
+              {gameStateRef.current.score > 0 && (
+                <div className="mb-6 p-4 bg-gray-700 rounded-lg border border-gray-600">
+                  <p className="text-lg text-green-400 mb-4">🎉 Submitting your high score...</p>
+                  <button
+                    onClick={submitHighScore}
+                    disabled={isClaimingReward}
+                    className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all disabled:transform-none"
+                  >
+                    {isClaimingReward ? '📊 Submitting...' : '📊 Submit to Leaderboard'}
+                  </button>
+                </div>
+              )}
+              
               <button
                 onClick={() => {
-                  // Immediately reset score to ensure it shows 0
+                  if (!hasSubmittedScore && gameStateRef.current.score > 0) {
+                    const confirmed = confirm(
+                      `Are you sure you want to play again without submitting your score of ${gameStateRef.current.score}? This score will be lost forever!`
+                    );
+                    if (!confirmed) return;
+                  }
                   gameStateRef.current.score = 0;
                   setScore(0);
-                  handleStartGame();
+                  setRewardSignature(null);
+                  setHasClaimed(false);
+                  setHasSubmittedScore(false);
+                  // Reset burn status - require new burn for next game
+                  setHasBurnedTokens(false);
+                  setBurnTransaction(null);
+                  setGamePhase('burn');
+                  setGameOver(false);
                 }}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full text-lg"
+                className={`bg-gradient-to-r ${
+                  !hasSubmittedScore && gameStateRef.current.score > 0 
+                    ? 'from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800' 
+                    : 'from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
+                } text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all`}
               >
-                Play Again
+                {!hasSubmittedScore && gameStateRef.current.score > 0 ? '⚠️ Play Again (Score Lost)' : '🔥 Burn ARI & Play Again'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Leaderboard screen */}
+        {gamePhase === 'leaderboard' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-yellow-900 via-green-900 to-black bg-opacity-95 z-10 overflow-y-auto">
+            <div className="text-center text-white max-w-2xl mx-auto p-8 bg-gray-800 bg-opacity-90 rounded-xl border border-yellow-500 m-4">
+              <h2 className="text-4xl font-bold mb-6 text-yellow-400">🏆 Leaderboard</h2>
+              
+              <div className="bg-gray-700 rounded-lg p-6 mb-6">
+                <h3 className="text-xl font-bold mb-4 text-green-400">Your Score: {gameStateRef.current.score}</h3>
+                {rewardSignature && (
+                  <div className="mb-4 p-4 bg-green-800 bg-opacity-50 rounded-lg border border-green-500">
+                    <p className="text-lg text-green-300 mb-2">🎁 Reward Available!</p>
+                    <p className="text-sm text-gray-300 mb-3">Amount: {rewardSignature.amount} ARI tokens</p>
+                    <button
+                      onClick={() => {
+                        // TODO: Implement actual claim logic
+                        setHasClaimed(true);
+                      }}
+                      disabled={hasClaimed}
+                      className="bg-gradient-to-r from-green-600 to-yellow-600 hover:from-green-700 hover:to-yellow-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all disabled:transform-none"
+                    >
+                      {hasClaimed ? '✅ Claimed!' : '🎁 Claim Reward'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-gray-700 rounded-lg p-4 mb-6 max-h-64 overflow-y-auto">
+                <h3 className="text-lg font-bold mb-4 text-cyan-400">🏅 Top Players</h3>
+                {leaderboard.length === 0 ? (
+                  <p className="text-gray-400">No scores yet. Be the first!</p>
+                ) : (
+                  <div className="space-y-2">
+                    {leaderboard.map((entry, index) => (
+                      <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
+                        entry.address === address ? 'bg-blue-600 bg-opacity-50 border border-blue-400' : 'bg-gray-600'
+                      }`}>
+                        <div className="flex items-center space-x-3">
+                          <span className="text-lg font-bold text-yellow-400">#{index + 1}</span>
+                          <span className="text-sm text-gray-300">{entry.address.slice(0, 6)}...{entry.address.slice(-4)}</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className="text-lg font-bold text-white">{entry.score}</span>
+                          {entry.address === address && (
+                            <span className="text-xs text-blue-300">YOU</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex space-x-4 justify-center">
+                <button
+                  onClick={() => {
+                    gameStateRef.current.score = 0;
+                    setScore(0);
+                    setRewardSignature(null);
+                    setHasClaimed(false);
+                    setHasSubmittedScore(false);
+                    // Reset burn status - require new burn for next game
+                    setHasBurnedTokens(false);
+                    setBurnTransaction(null);
+                    setGamePhase('burn');
+                    setGameOver(false);
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all"
+                >
+                  🔥 Burn ARI & Play Again
+                </button>
+                <button
+                  onClick={() => {
+                    setGamePhase('connect');
+                    setHasBurnedTokens(false);
+                    setBurnTransaction(null);
+                    disconnect();
+                  }}
+                  className="bg-gradient-to-r from-gray-600 to-red-600 hover:from-gray-700 hover:to-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all"
+                >
+                  🚪 Exit Game
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -3397,7 +3823,7 @@ export default function MolochGame() {
       </div>
       
       {/* Mobile Game Controls - Fixed at bottom for fullscreen */}
-      {isMobile && gameStarted && !gameOver && (
+      {isMobile && gamePhase === 'playing' && (
         <div className="fixed bottom-0 left-0 right-0 bg-gray-800 bg-opacity-90 p-3 overflow-visible border-t-2 border-cyan-500">
           {/* Controls toggle button */}
           <div className="flex justify-center mb-4 relative">
