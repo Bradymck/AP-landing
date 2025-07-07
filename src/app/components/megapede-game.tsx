@@ -3573,7 +3573,7 @@ export default function MolochGame() {
           <div className="text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-80 rounded-xl border border-purple-500">
             <h2 className="text-4xl font-bold mb-6 text-cyan-400">🕹️ Moloch Centipede</h2>
             <p className="text-lg mb-6 text-gray-300">
-              Connect your wallet to start playing and earn ARI token rewards!
+              Connect your wallet to start playing and earn Moonstone token rewards!
             </p>
             <button
               onClick={() => connect({ connector: injected() })}
