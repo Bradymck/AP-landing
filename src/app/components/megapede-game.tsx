@@ -10,6 +10,9 @@ import { base } from 'wagmi/chains'
 const ARI_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_TOKEN_TO_BURN_ADDRESS as `0x${string}` || '0xDd33A2644D72324fE453036c78296AC90AEd2E2f'
 const REQUIRED_BURN_AMOUNT = process.env.NEXT_PUBLIC_REQUIRED_BURN_AMOUNT || '1000000000000000000' // 1 ARI token
 
+// Faucet Contract Details
+const FAUCET_CONTRACT_ADDRESS = '0x447b964389d9Ff14eBc4EBC92920FD3a69baDc76' as `0x${string}`
+
 // ERC20 ABI for burn function
 const ERC20_ABI = [
   {
@@ -24,6 +27,21 @@ const ERC20_ABI = [
     name: 'balanceOf',
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'view',
+    type: 'function'
+  }
+] as const
+
+// Faucet Contract ABI
+const FAUCET_ABI = [
+  {
+    inputs: [
+      { name: 'amount', type: 'uint256' },
+      { name: 'nonce', type: 'string' },
+      { name: 'signature', type: 'bytes' }
+    ],
+    name: 'claimReward',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function'
   }
 ] as const
@@ -1262,7 +1280,7 @@ export default function MolochGame() {
   const [sfxMuted, setSfxMuted] = useState(false)
   const [musicMuted, setMusicMuted] = useState(false)
   const [isClaimingReward, setIsClaimingReward] = useState(false)
-  const [rewardSignature, setRewardSignature] = useState<{amount: string, nonce: string, signature: string} | null>(null)
+  const [rewardSignature, setRewardSignature] = useState<{amount: string, nonce: string, signature: string, scoreId?: number} | null>(null)
   const [hasClaimed, setHasClaimed] = useState(false)
   
   // Game flow states
@@ -1302,6 +1320,13 @@ export default function MolochGame() {
   
   const { isLoading: isBurnConfirming, isSuccess: isBurnConfirmed } = useWaitForTransactionReceipt({
     hash: burnTxHash,
+  })
+
+  // Faucet contract hooks
+  const { writeContract: writeClaimContract, data: claimTxHash, isPending: isClaimPending, error: claimError } = useWriteContract()
+  
+  const { isLoading: isClaimConfirming, isSuccess: isClaimConfirmed } = useWaitForTransactionReceipt({
+    hash: claimTxHash,
   })
   
   // Create image for player ship and spider
@@ -1610,6 +1635,14 @@ export default function MolochGame() {
     }
   }, [isBurnConfirmed, burnTxHash, address])
 
+  // Handle claim confirmation
+  useEffect(() => {
+    if (isClaimConfirmed && claimTxHash) {
+      console.log('Claim confirmed! Transaction hash:', claimTxHash)
+      setHasClaimed(true)
+    }
+  }, [isClaimConfirmed, claimTxHash])
+
   // Verify burn transaction on server
   const verifyBurnOnServer = async (txHash: string) => {
     try {
@@ -1731,6 +1764,39 @@ export default function MolochGame() {
       console.error('Error submitting high score:', error)
     } finally {
       setIsClaimingReward(false)
+    }
+  }
+
+  // Claim reward from faucet contract
+  const claimReward = async () => {
+    if (!address || !rewardSignature) return
+    
+    console.log('Starting claim process with signature:', rewardSignature)
+    
+    try {
+      // Convert amount to Wei (assuming amount is in tokens with 18 decimals)
+      const amountInWei = parseEther(rewardSignature.amount)
+      
+      console.log('Calling faucet contract claimReward with:', {
+        amount: amountInWei.toString(),
+        nonce: rewardSignature.nonce,
+        signature: rewardSignature.signature
+      })
+      
+      // Call the faucet contract
+      writeClaimContract({
+        address: FAUCET_CONTRACT_ADDRESS,
+        abi: FAUCET_ABI,
+        functionName: 'claimReward',
+        args: [
+          amountInWei,
+          rewardSignature.nonce,
+          rewardSignature.signature as `0x${string}`
+        ],
+      })
+      
+    } catch (error) {
+      console.error('Error claiming reward:', error)
     }
   }
 
@@ -3798,16 +3864,38 @@ export default function MolochGame() {
                   <div className="mb-4 p-4 bg-green-800 bg-opacity-50 rounded-lg border border-green-500">
                     <p className="text-lg text-green-300 mb-2">🎁 Reward Available!</p>
                     <p className="text-sm text-gray-300 mb-3">Amount: {rewardSignature.amount} Moonstone</p>
+                    {isClaimPending && (
+                      <p className="text-sm text-blue-400 mb-3">
+                        ⏳ Transaction pending... Please confirm in your wallet
+                      </p>
+                    )}
+                    
+                    {isClaimConfirming && (
+                      <p className="text-sm text-blue-400 mb-3">
+                        ⏳ Confirming transaction...
+                      </p>
+                    )}
+                    
+                    {claimError && (
+                      <p className="text-sm text-red-400 mb-3">
+                        ❌ Error: {claimError.message}
+                      </p>
+                    )}
+                    
+                    {claimTxHash && isClaimConfirmed && (
+                      <p className="text-sm text-green-400 mb-3">
+                        ✅ Claimed! Tx: {claimTxHash.slice(0, 10)}...
+                      </p>
+                    )}
+                    
                     <button
-                      onClick={() => {
-                        // TODO: Implement actual claim logic from faucet contract
-                        console.log('Claiming reward with signature:', rewardSignature);
-                        setHasClaimed(true);
-                      }}
-                      disabled={hasClaimed}
+                      onClick={claimReward}
+                      disabled={hasClaimed || isClaimPending || isClaimConfirming}
                       className="bg-gradient-to-r from-green-600 to-yellow-600 hover:from-green-700 hover:to-yellow-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all disabled:transform-none"
                     >
-                      {hasClaimed ? '✅ Claimed!' : '🌙 Claim Moonstone'}
+                      {isClaimPending ? '⏳ Confirming...' :
+                       isClaimConfirming ? '⏳ Processing...' :
+                       hasClaimed ? '✅ Claimed!' : '🌙 Claim Moonstone'}
                     </button>
                   </div>
                 )}
