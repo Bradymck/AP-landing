@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
       receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` })
     } catch (rpcError) {
       console.error('RPC Error:', rpcError)
-      return NextResponse.json({ error: `Failed to fetch transaction: ${rpcError.message}` }, { status: 400 })
+      const errorMessage = rpcError instanceof Error ? rpcError.message : 'Unknown error'
+      return NextResponse.json({ error: `Failed to fetch transaction: ${errorMessage}` }, { status: 400 })
     }
     
     if (!receipt || receipt.status !== 'success') {
