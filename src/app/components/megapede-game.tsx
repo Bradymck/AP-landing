@@ -3797,16 +3797,17 @@ export default function MolochGame() {
                 {rewardSignature && (
                   <div className="mb-4 p-4 bg-green-800 bg-opacity-50 rounded-lg border border-green-500">
                     <p className="text-lg text-green-300 mb-2">🎁 Reward Available!</p>
-                    <p className="text-sm text-gray-300 mb-3">Amount: {rewardSignature.amount} ARI tokens</p>
+                    <p className="text-sm text-gray-300 mb-3">Amount: {rewardSignature.amount} Moonstone</p>
                     <button
                       onClick={() => {
-                        // TODO: Implement actual claim logic
+                        // TODO: Implement actual claim logic from faucet contract
+                        console.log('Claiming reward with signature:', rewardSignature);
                         setHasClaimed(true);
                       }}
                       disabled={hasClaimed}
                       className="bg-gradient-to-r from-green-600 to-yellow-600 hover:from-green-700 hover:to-yellow-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all disabled:transform-none"
                     >
-                      {hasClaimed ? '✅ Claimed!' : '🎁 Claim Reward'}
+                      {hasClaimed ? '✅ Claimed!' : '🌙 Claim Moonstone'}
                     </button>
                   </div>
                 )}

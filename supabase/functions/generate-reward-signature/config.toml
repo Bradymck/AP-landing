@@ -1,0 +1,2 @@
+[env]
+BACKEND_SIGNER_PRIVATE_KEY = "env"

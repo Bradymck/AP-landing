@@ -14,15 +14,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Address and score are required' }, { status: 400 })
     }
 
-    // TODO: Implement actual signature generation logic
-    // For now, return a placeholder response
-    const mockSignature = {
-      amount: (score * 0.01).toString(), // 0.01 tokens per point
-      nonce: Date.now().toString(),
-      signature: '0x' + '0'.repeat(130) // Placeholder signature
+    console.log('Saving score to Supabase:', { address, score })
+
+    // 1. Save the score to Supabase
+    const { data: savedScore, error: saveError } = await supabase
+      .from('scores')
+      .insert([{ player_address: address, score }])
+      .select()
+      .single()
+
+    if (saveError) {
+      console.error('Error saving score to Supabase:', saveError)
+      return NextResponse.json({ error: 'Failed to save score' }, { status: 500 })
     }
 
-    return NextResponse.json(mockSignature)
+    console.log('Score saved successfully:', savedScore)
+
+    // 2. Calculate reward amount (0.01 Moonstone per point)
+    const rewardAmount = (score * 0.01).toString()
+    
+    // 3. Generate signature using Supabase Edge Function
+    console.log('Calling Supabase edge function for signature generation...')
+    
+    const { data: signatureData, error: signatureError } = await supabase.functions.invoke('generate-reward-signature', {
+      body: {
+        playerAddress: address,
+        rewardAmount,
+        scoreId: savedScore.id
+      }
+    })
+
+    if (signatureError) {
+      console.error('Error calling edge function:', signatureError)
+      return NextResponse.json({ error: 'Failed to generate signature' }, { status: 500 })
+    }
+
+    console.log('Signature generated successfully:', signatureData)
+
+    return NextResponse.json({
+      amount: rewardAmount,
+      nonce: signatureData.nonce,
+      signature: signatureData.signature,
+      scoreId: savedScore.id
+    })
+
   } catch (error) {
     console.error('Error generating reward signature:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
