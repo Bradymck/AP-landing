@@ -1582,13 +1582,8 @@ export default function MolochGame() {
       const response = await fetch(`/api/verify-burn?address=${userAddress}`)
       const result = await response.json()
       
-      if (result.hasVerifiedBurn && result.canPlay) {
-        setHasBurnedTokens(true)
-        setBurnTransaction(result.burnData.tx_hash)
-        setGamePhase('ready')
-      } else {
-        setGamePhase('burn')
-      }
+      // Always require new burn - no reusing old burns
+      setGamePhase('burn')
     } catch (error) {
       console.error('Failed to check existing burn:', error)
       setGamePhase('burn')
