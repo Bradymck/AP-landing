@@ -33,8 +33,8 @@ serve(async (req) => {
     console.log('Signer address:', wallet.address)
 
     // Generate numeric nonce (timestamp + random number)
-    // Use timestamp in milliseconds + random 6 digits to ensure uniqueness
-    const nonce = Date.now() * 1000000 + Math.floor(Math.random() * 1000000)
+    // Use timestamp in seconds + random 6 digits to ensure uniqueness and avoid overflow
+    const nonce = Math.floor(Date.now() / 1000) * 1000000 + Math.floor(Math.random() * 1000000)
 
     // Create message to sign - this must match EXACTLY what the contract expects
     const amountInWei = ethers.parseEther(rewardAmount)
