@@ -3798,17 +3798,6 @@ export default function MolochGame() {
                 >
                   🔥 Burn ARI & Play Again
                 </button>
-                <button
-                  onClick={() => {
-                    setGamePhase('connect');
-                    setHasBurnedTokens(false);
-                    setBurnTransaction(null);
-                    disconnect();
-                  }}
-                  className="bg-gradient-to-r from-gray-600 to-red-600 hover:from-gray-700 hover:to-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all"
-                >
-                  🚪 Exit Game
-                </button>
               </div>
             </div>
           </div>
