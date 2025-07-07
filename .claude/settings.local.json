@@ -38,7 +38,8 @@
       "Bash(find:*)",
       "Bash(git push:*)",
       "Bash(supabase functions deploy:*)",
-      "Bash(supabase secrets:*)"
+      "Bash(supabase secrets:*)",
+      "WebFetch(domain:basescan.org)"
     ],
     "deny": []
   }

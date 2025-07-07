@@ -35,27 +35,32 @@ serve(async (req) => {
     // Generate nonce (timestamp + random)
     const nonce = Date.now().toString() + Math.random().toString(36).substring(2)
 
-    // Create message to sign (following EIP-712 or similar pattern)
-    // This should match the verification logic in your faucet contract
-    const message = ethers.solidityPackedKeccak256(
-      ['address', 'uint256', 'uint256', 'string'],
-      [playerAddress, ethers.parseEther(rewardAmount), scoreId, nonce]
+    // Create message to sign - standard format for faucet contracts
+    // Message format: keccak256(abi.encodePacked(playerAddress, amount, nonce))
+    const amountInWei = ethers.parseEther(rewardAmount)
+    
+    // Create the message hash that the contract expects
+    const messageHash = ethers.solidityPackedKeccak256(
+      ['address', 'uint256', 'string'],
+      [playerAddress, amountInWei, nonce]
     )
 
-    // Sign the message
-    const signature = await wallet.signMessage(ethers.getBytes(message))
+    // Sign the message hash directly (not the bytes)
+    const signature = await wallet.signMessage(ethers.getBytes(messageHash))
     
     console.log('Signature generated:', {
-      message: message,
+      messageHash: messageHash,
       signature: signature,
-      nonce: nonce
+      nonce: nonce,
+      playerAddress: playerAddress,
+      amountInWei: amountInWei.toString()
     })
 
     return new Response(
       JSON.stringify({
         signature,
         nonce,
-        message,
+        messageHash,
         signerAddress: wallet.address
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
