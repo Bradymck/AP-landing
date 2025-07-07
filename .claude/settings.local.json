@@ -34,7 +34,8 @@
       "Bash(unset HOSTNAME)",
       "Bash(echo:*)",
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(supabase db:*)"
+      "Bash(supabase db:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
