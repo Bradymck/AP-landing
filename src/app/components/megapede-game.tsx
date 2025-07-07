@@ -1280,8 +1280,8 @@ export default function MolochGame() {
   const chainId = useChainId()
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain({
     mutation: {
-      onSuccess: () => {
-        console.log('Successfully switched to Base network')
+      onSuccess: (data) => {
+        console.log('Successfully switched to network:', data.name, 'ID:', data.id)
       },
       onError: (error) => {
         console.error('Network switch error:', error)
@@ -3614,6 +3614,7 @@ export default function MolochGame() {
           <div className="text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-80 rounded-xl border border-orange-500">
             <h2 className="text-3xl font-bold mb-4 text-orange-400">🔥 Burn ARI Tokens</h2>
             <p className="text-xs text-gray-400 mb-2">Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
+            <p className="text-xs text-gray-400 mb-2">Current Chain: {chainId} {chainId === base.id ? '(Base ✅)' : '(Need Base)'}</p>
             <p className="text-sm text-yellow-400 mb-4">
               Balance: {ariBalance ? (Number(ariBalance) / 1e18).toFixed(2) : '0'} ARI
             </p>
