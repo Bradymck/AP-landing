@@ -30,10 +30,35 @@ export async function POST(request: NextRequest) {
 
     console.log('Score saved successfully:', savedScore)
 
-    // 2. Calculate reward amount (0.01 Moonstone per point)
+    // 2. Check if this score qualifies as a high score (top 10)
+    const { data: topScores, error: topScoresError } = await supabase
+      .from('scores')
+      .select('score')
+      .order('score', { ascending: false })
+      .limit(10)
+
+    if (topScoresError) {
+      console.error('Error fetching top scores:', topScoresError)
+      return NextResponse.json({ error: 'Failed to validate high score' }, { status: 500 })
+    }
+
+    // Check if the submitted score is in the top 10
+    const isHighScore = topScores.length < 10 || score >= topScores[topScores.length - 1].score
+    
+    if (!isHighScore) {
+      console.log('Score does not qualify as high score:', { score, topScores })
+      return NextResponse.json({ 
+        error: 'Score does not qualify for rewards. Only top 10 scores can claim tokens.',
+        isHighScore: false 
+      }, { status: 400 })
+    }
+
+    console.log('Score qualifies as high score:', { score, topScores })
+
+    // 3. Calculate reward amount (0.01 Moonstone per point)
     const rewardAmount = (score * 0.01).toString()
     
-    // 3. Generate signature using Supabase Edge Function
+    // 4. Generate signature using Supabase Edge Function
     console.log('Calling Supabase edge function for signature generation...')
     
     const { data: signatureData, error: signatureError } = await supabase.functions.invoke('generate-reward-signature', {

@@ -1425,6 +1425,47 @@ export default function MolochGame() {
     }
   }
 
+  // Create blood splat when centipede head dies
+  const createBloodSplat = (position: Vector2) => {
+    const state = gameStateRef.current
+
+    // Create blood splat particles
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = 0.5 + Math.random() * 2
+      const bloodColors = ['#8B0000', '#A52A2A', '#DC143C', '#B22222']
+      const color = bloodColors[Math.floor(Math.random() * bloodColors.length)]
+
+      state.particles.push({
+        position: {
+          x: position.x + GRID_SIZE / 2,
+          y: position.y + GRID_SIZE / 2,
+        },
+        velocity: {
+          x: Math.cos(angle) * speed,
+          y: Math.sin(angle) * speed,
+        },
+        size: 2 + Math.random() * 4, // Bigger blood particles
+        color,
+        createdAt: Date.now(),
+        lifespan: 1000 + Math.random() * 2000, // Longer lasting blood
+      })
+    }
+
+    // Create a lingering blood stain
+    state.particles.push({
+      position: {
+        x: position.x + GRID_SIZE / 2 - 4,
+        y: position.y + GRID_SIZE / 2 - 4,
+      },
+      velocity: { x: 0, y: 0 }, // Stationary blood stain
+      size: 8 + Math.random() * 4, // Large blood stain
+      color: '#8B0000', // Dark red
+      createdAt: Date.now(),
+      lifespan: 3000 + Math.random() * 2000, // Long-lasting blood stain
+    })
+  }
+
   // Create a new mushroom
   const createMushroom = (x: number, y: number) => {
     const state = gameStateRef.current
@@ -1758,7 +1799,17 @@ export default function MolochGame() {
         setLeaderboard(prev => [...prev, newEntry].sort((a, b) => b.score - a.score))
         setGamePhase('leaderboard')
       } else {
-        console.error('Failed to get reward signature')
+        const errorData = await response.json().catch(() => ({}))
+        if (response.status === 400 && errorData.error?.includes('top 10')) {
+          console.log('Score does not qualify for rewards - not in top 10')
+          // Still add to leaderboard but without reward signature
+          const newEntry = { address, score: gameStateRef.current.score, claimed: false }
+          setLeaderboard(prev => [...prev, newEntry].sort((a, b) => b.score - a.score))
+          setHasSubmittedScore(true)
+          setGamePhase('leaderboard')
+        } else {
+          console.error('Failed to get reward signature:', errorData.error || 'Unknown error')
+        }
       }
     } catch (error) {
       console.error('Error submitting high score:', error)
@@ -2044,6 +2095,10 @@ export default function MolochGame() {
             if (distance <= shockwaveRadius) {
               // Instant kill - regardless of armor
               segment.isAlive = false
+              
+              // Create blood splat for shockwave kill
+              createBloodSplat(segment.position)
+              
               if (soundManager) {
                 soundManager.play('enemy-hit')
               }
@@ -2065,6 +2120,10 @@ export default function MolochGame() {
           
           if (distance <= shockwaveRadius) {
             spider.isAlive = false
+            
+            // Create blood splat for spider shockwave kill
+            createBloodSplat(spider.position)
+            
             if (soundManager) {
               soundManager.play('enemy-hit')
             }
@@ -2600,6 +2659,11 @@ export default function MolochGame() {
                     }
                   }
 
+                  // Create blood splat when head is destroyed
+                  if (damageResult.destroyed) {
+                    createBloodSplat(segment.position)
+                  }
+
                   // If segment had armor, create armor breaking particles
                   if (damageResult.hitArmor) {
                     // Create armor hit particles
@@ -2650,6 +2714,11 @@ export default function MolochGame() {
                     } else {
                       soundManager.play('enemy-hit')
                     }
+                  }
+
+                  // Create blood splat when body segment is destroyed
+                  if (damageResult.destroyed) {
+                    createBloodSplat(segment.position)
                   }
 
                   // Visual feedback for hitting armored segment
@@ -2738,6 +2807,9 @@ export default function MolochGame() {
             state.player.killCount += 2 // Spiders count more toward energizing
             state.spiderKillCount += 1 // Track spider kills for power-up spawning
             
+            // Create blood splat when spider dies
+            createBloodSplat(spider.position)
+            
             // Play enemy hit sound for spider
             if (soundManager) {
               soundManager.play('enemy-hit')
@@ -2752,8 +2824,34 @@ export default function MolochGame() {
       // Remove destroyed mushrooms
       state.mushrooms = state.mushrooms.filter((mushroom) => mushroom.health > 0)
 
-      // Update particles
+      // Update particles movement and cleanup
       const particleNow = Date.now()
+      
+      // Update particle positions and remove expired particles
+      state.particles = state.particles.filter((particle) => {
+        const particleAge = particleNow - particle.createdAt
+        
+        // Remove expired particles
+        if (particleAge > particle.lifespan) {
+          return false
+        }
+        
+        // Update particle position based on velocity
+        particle.position.x += particle.velocity.x
+        particle.position.y += particle.velocity.y
+        
+        // Add gravity to moving particles (not stationary blood stains)
+        if (particle.velocity.x !== 0 || particle.velocity.y !== 0) {
+          particle.velocity.y += 0.1 // Gravity effect
+          // Slow down particles over time
+          particle.velocity.x *= 0.99
+          particle.velocity.y *= 0.99
+        }
+        
+        return true
+      })
+      
+      // Render particles
       state.particles.forEach((particle) => {
         const particleAge = particleNow - particle.createdAt
         const ageRatio = particleAge / particle.lifespan

@@ -32,17 +32,15 @@ serve(async (req) => {
     const wallet = new ethers.Wallet(privateKey)
     console.log('Signer address:', wallet.address)
 
-    // Generate numeric nonce (timestamp + random number)
-    // Use timestamp in seconds + random 6 digits to ensure uniqueness and avoid overflow
-    const nonce = Math.floor(Date.now() / 1000) * 1000000 + Math.floor(Math.random() * 1000000)
+    // Generate purely numeric nonce to ensure contract compatibility
+    // Use simple timestamp to avoid any conversion issues
+    const nonce = Date.now()
     const nonceString = nonce.toString()
 
     // Create message to sign - this must match EXACTLY what the contract expects
     const amountInWei = ethers.parseEther(rewardAmount)
     
-    // Create the packed message (not hashed yet)
-    // Contract expects: keccak256(abi.encodePacked(msg.sender, _amount, _nonce))
-    // Since contract expects nonce as string, we need to pack it as string
+    // Contract expects nonce as string, so sign with string nonce
     const packedMessage = ethers.solidityPacked(
       ['address', 'uint256', 'string'],
       [playerAddress, amountInWei, nonceString]
@@ -51,8 +49,8 @@ serve(async (req) => {
     // Hash the packed message
     const messageHash = ethers.keccak256(packedMessage)
     
-    // Sign the hash using signMessage (which adds EIP-191 prefix automatically)
-    // This is equivalent to signing with personal_sign in web3
+    // Try both approaches - let's go back to EIP-191 format first
+    // Most contracts expect EIP-191 prefixed signatures
     const signature = await wallet.signMessage(ethers.getBytes(messageHash))
     
     console.log('Signature generated:', {
