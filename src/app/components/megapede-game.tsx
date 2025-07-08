@@ -66,6 +66,13 @@ class SoundManager {
   private sfxVolume: number = 0.2 // Lowered for bullets
 
   constructor() {
+    // Only initialize audio if running in browser
+    if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+      this.initializeSounds()
+    }
+  }
+
+  private initializeSounds() {
     // Preload all sound effects (bullets now handled separately as loops)
     const soundFiles = [
       'enemy-hit.wav',
@@ -158,6 +165,11 @@ class SoundManager {
   }
 
   async enableAudio() {
+    // Only enable audio if running in browser
+    if (typeof window === 'undefined') {
+      return
+    }
+    
     // Try to enable audio context (required for autoplay policy)
     if (!this.audioEnabled) {
       try {
@@ -2058,6 +2070,9 @@ export default function MolochGame() {
 
   // Handle keyboard input
   useEffect(() => {
+    // Only set up keyboard listeners if running in browser
+    if (typeof window === 'undefined') return
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameStateRef.current
 
@@ -2157,40 +2172,48 @@ export default function MolochGame() {
   }, [levelIntro, gameOver]) // Add levelIntro and gameOver to dependencies
 
   // Mobile touch control handlers
-  window.handleTouchStart = (direction: string) => {
-    const state = gameStateRef.current
+  useEffect(() => {
+    // Only set up touch handlers if running in browser
+    if (typeof window === 'undefined') return
     
-    // Don't process input during level intro countdown or game over
-    if (levelIntro || state.gameOver) return
-    
-    if (direction === "left") state.keys.left = true
-    if (direction === "right") state.keys.right = true
-    if (direction === "up") state.keys.up = true
-    if (direction === "down") state.keys.down = true
-    if (direction === "shoot") {
-      // Toggle auto shooting with spacebar on key press, not on hold
-      if (!state.keys.space) {
-        state.keys.space = true
-        state.autoShootEnabled = !state.autoShootEnabled
+    window.handleTouchStart = (direction: string) => {
+      const state = gameStateRef.current
+      
+      // Don't process input during level intro countdown or game over
+      if (levelIntro || state.gameOver) return
+      
+      if (direction === "left") state.keys.left = true
+      if (direction === "right") state.keys.right = true
+      if (direction === "up") state.keys.up = true
+      if (direction === "down") state.keys.down = true
+      if (direction === "shoot") {
+        // Toggle auto shooting with spacebar on key press, not on hold
+        if (!state.keys.space) {
+          state.keys.space = true
+          state.autoShootEnabled = !state.autoShootEnabled
+        }
       }
     }
-  }
-  
-  window.handleTouchEnd = (direction: string) => {
-    const state = gameStateRef.current
     
-    // Don't process input during level intro countdown or game over
-    if (levelIntro || state.gameOver) return
-    
-    if (direction === "left") state.keys.left = false
-    if (direction === "right") state.keys.right = false
-    if (direction === "up") state.keys.up = false
-    if (direction === "down") state.keys.down = false
-    if (direction === "shoot") state.keys.space = false
-  }
+    window.handleTouchEnd = (direction: string) => {
+      const state = gameStateRef.current
+      
+      // Don't process input during level intro countdown or game over
+      if (levelIntro || state.gameOver) return
+      
+      if (direction === "left") state.keys.left = false
+      if (direction === "right") state.keys.right = false
+      if (direction === "up") state.keys.up = false
+      if (direction === "down") state.keys.down = false
+      if (direction === "shoot") state.keys.space = false
+    }
+  }, [levelIntro, gameOver])
 
   // Load images once on mount
   useEffect(() => {
+    // Only load images if running in browser
+    if (typeof window === 'undefined' || typeof Image === 'undefined') return
+    
     // Load the ship image with error handling
     const shipImage = new Image()
     shipImage.onload = () => {
@@ -3704,7 +3727,7 @@ export default function MolochGame() {
     const containerHeight = container.clientHeight
     
     // Determine if mobile
-    const isMobileDevice = window.innerWidth < 768
+    const isMobileDevice = typeof window !== 'undefined' ? window.innerWidth < 768 : false
     
     // Calculate aspect ratio
     const aspectRatio = BASE_GAME_HEIGHT / BASE_GAME_WIDTH
@@ -3750,6 +3773,9 @@ export default function MolochGame() {
   }
 
   useEffect(() => {
+    // Only set up resize handler if running in browser
+    if (typeof window === 'undefined') return
+    
     // Set up resize handler
     window.addEventListener('resize', handleResize)
     
@@ -3839,6 +3865,9 @@ export default function MolochGame() {
   
   // Monitor for fullscreen change events
   useEffect(() => {
+    // Only set up fullscreen listener if running in browser
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+    
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement)
     }
@@ -3894,6 +3923,9 @@ export default function MolochGame() {
   
   // Monitor for fullscreen change events
   useEffect(() => {
+    // Only set up fullscreen listener if running in browser
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+    
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement)
     }

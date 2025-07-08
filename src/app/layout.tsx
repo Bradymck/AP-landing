@@ -1,6 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Providers } from './providers'
+import { ClientProviders } from './client-providers'
 
 export const metadata: Metadata = {
   title: 'AquaPrime',
@@ -30,9 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>
+        <ClientProviders>
           {children}
-        </Providers>
+        </ClientProviders>
       </body>
     </html>
   );
