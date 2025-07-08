@@ -532,8 +532,8 @@ const PARTICLE_COUNT = 8 // Reduced for performance optimization
 
 // Enemy scaling constants
 const BASE_MOLOCH_SPEED = 0.6 // Base speed for level 1 (reduced from 1.0)
-const BASE_SPIDER_SPEED = 0.5 // Base spider speed for level 1 (reduced from 0.8)
-const SPEED_INCREASE_PER_LEVEL = 0.1 // Speed increases by this amount per level
+const BASE_SPIDER_SPEED = 0.8 // Base spider speed for level 1 (increased for more challenge)
+const SPEED_INCREASE_PER_LEVEL = 0.15 // Speed increases more aggressively per level
 const BASE_SEGMENT_COUNT = 20 // Base Moloch centipede length for level 1
 const SEGMENTS_INCREASE_LEVEL = 3 // Moloch centipede grows longer every X levels
 
@@ -908,9 +908,9 @@ class Spider {
   isChewing = false
   lastDirectionChange = 0
   directionChangeDelay = 1000 // ms between direction changes
-  chaseSpeed = .5 // Moderate speed when chasing (was 0.5)
+  chaseSpeed = 1.0 // Increased chase speed (was 0.5)
   isAtBottom = false // Flag to track if spider is at the bottom
-  aggressiveChaseSpeed = 1.5 // Faster speed when aggressively chasing
+  aggressiveChaseSpeed = 2.2 // Much faster when aggressively chasing (was 1.5)
 
   constructor(position: Vector2, speed: number, size: number) {
     this.position = position
@@ -1427,6 +1427,8 @@ export default function MolochGame() {
     maxCentipedesPerLevel: 4, // Total centipedes to spawn per level (ensures longer gameplay)
     roundTripTriggers: 0, // Track round trips to spawn additional centipedes
     lastKeyResetTime: 0, // Track time for stuck key detection
+    lastCentipedeKillTime: 0, // Track when last centipede segment was killed
+    antiFarmingActive: false, // Flag for anti-farming mode
     shockwaveEffect: null as {
       x: number;
       y: number;
@@ -1639,6 +1641,8 @@ export default function MolochGame() {
     // Note: score is not reset here - it should be set correctly by caller (0 for new game, preserved for level progression)
     state.lastUpdateTime = Date.now()
     state.lastSpiderSpawnTime = Date.now()
+    state.lastCentipedeKillTime = Date.now() // Initialize anti-farming timer
+    state.antiFarmingActive = false // Reset anti-farming state
     
     // Choose a random emoji for this level's Moloch centipede and update global variables
     state.levelEmoji = EMOJI_HEADS[Math.floor(Math.random() * EMOJI_HEADS.length)]
@@ -2764,6 +2768,8 @@ export default function MolochGame() {
                   // Create blood splat when head is destroyed
                   if (damageResult.destroyed) {
                     createBloodSplat(segment.position)
+                    // Update anti-farming timer
+                    state.lastCentipedeKillTime = Date.now()
                   }
 
                   // If segment had armor, create armor breaking particles
@@ -2821,6 +2827,8 @@ export default function MolochGame() {
                   // Create blood splat when body segment is destroyed
                   if (damageResult.destroyed) {
                     createBloodSplat(segment.position)
+                    // Update anti-farming timer
+                    state.lastCentipedeKillTime = Date.now()
                   }
 
                   // Visual feedback for hitting armored segment
@@ -3459,11 +3467,14 @@ export default function MolochGame() {
         })
         .filter((chain) => chain.segments.length > 0)
 
-      // Spawn spiders occasionally
+      // Spawn spiders aggressively - much faster at higher levels
       const now2 = Date.now()
-      if (now2 - state.lastSpiderSpawnTime > Math.max(2000, 5000 - (state.level - 1) * 300)) {
-        // Maximum spiders scales with level (1-5 spiders)
-        const maxSpiders = Math.min(5, 1 + Math.floor(state.level / 2))
+      // Aggressive spawn rate: starts at 3000ms, reduces to 500ms minimum
+      const spiderSpawnInterval = Math.max(500, 3000 - (state.level - 1) * 250)
+      
+      if (now2 - state.lastSpiderSpawnTime > spiderSpawnInterval) {
+        // More spiders at higher levels: 2-15 spiders based on level
+        const maxSpiders = Math.min(15, 2 + Math.floor(state.level * 1.5))
         
         // Only spawn if fewer than max spiders for current level
         if (state.spiders.filter(s => s.isAlive).length < maxSpiders) {
@@ -3473,12 +3484,51 @@ export default function MolochGame() {
           // Create spider with level-appropriate speed
           const spider = new Spider(
             { x: spiderX, y: spiderY },
-            1.5, // Base multiplier - actual speed calculated in constructor based on level
+            2.0, // Increased base multiplier for more challenge (was 1.5)
             SPIDER_SIZE
           )
           state.spiders.push(spider)
         }
         state.lastSpiderSpawnTime = now2
+      }
+
+      // Anti-farming mechanism: If no centipede segments killed for 30 seconds, spawn aggressive spiders
+      const now3 = Date.now()
+      const timeSinceLastKill = now3 - state.lastCentipedeKillTime
+      const totalCentipedeSegments = state.molochChains.reduce((total, chain) => 
+        total + chain.segments.filter(s => s.isAlive).length, 0)
+      
+      // If there are centipede segments alive but none killed for 30 seconds, activate anti-farming
+      if (totalCentipedeSegments > 0 && timeSinceLastKill > 30000 && !state.antiFarmingActive) {
+        state.antiFarmingActive = true
+        console.log("🚨 Anti-farming activated! Spawning aggressive spiders...")
+      }
+      
+      // When anti-farming is active, spawn spiders much more aggressively
+      if (state.antiFarmingActive && totalCentipedeSegments > 0) {
+        // Spawn spiders every 300ms when anti-farming
+        if (now3 - state.lastSpiderSpawnTime > 300) {
+          // Spawn up to 20 spiders during anti-farming
+          if (state.spiders.filter(s => s.isAlive).length < 20) {
+            const spiderX = Math.random() * (GAME_WIDTH - SPIDER_SIZE * 2) + SPIDER_SIZE
+            const spiderY = BORDER_WIDTH
+            
+            // Create extra fast spiders for anti-farming
+            const spider = new Spider(
+              { x: spiderX, y: spiderY },
+              3.0, // Much faster spiders for anti-farming
+              SPIDER_SIZE
+            )
+            state.spiders.push(spider)
+          }
+          state.lastSpiderSpawnTime = now3
+        }
+      }
+      
+      // Reset anti-farming when all centipedes are dead
+      if (totalCentipedeSegments === 0 && state.antiFarmingActive) {
+        state.antiFarmingActive = false
+        console.log("✅ Anti-farming deactivated - all centipedes eliminated")
       }
 
       // Spawn power-ups every 5 spider kills
