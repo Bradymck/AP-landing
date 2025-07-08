@@ -3498,10 +3498,10 @@ export default function MolochGame() {
       const totalCentipedeSegments = state.molochChains.reduce((total, chain) => 
         total + chain.segments.filter(s => s.isAlive).length, 0)
       
-      // If there are centipede segments alive but none killed for 30 seconds, activate anti-farming
-      if (totalCentipedeSegments > 0 && timeSinceLastKill > 30000 && !state.antiFarmingActive) {
+      // Only activate anti-farming when there are 2 or fewer segments left (stuck segment scenario)
+      if (totalCentipedeSegments <= 2 && totalCentipedeSegments > 0 && timeSinceLastKill > 30000 && !state.antiFarmingActive) {
         state.antiFarmingActive = true
-        console.log("🚨 Anti-farming activated! Spawning aggressive spiders...")
+        console.log(`🚨 Anti-farming activated! ${totalCentipedeSegments} segment(s) stuck - spawning aggressive spiders...`)
       }
       
       // When anti-farming is active, spawn spiders much more aggressively
