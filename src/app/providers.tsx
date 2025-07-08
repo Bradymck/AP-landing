@@ -38,8 +38,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
         loginMethods: ['wallet', 'email'],
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-          noPromptOnSignature: true
+          createOnLogin: 'users-without-wallets'
         },
         walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
       }}
