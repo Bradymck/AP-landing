@@ -3768,7 +3768,7 @@ export default function MolochGame() {
   // User needs to manually start the game
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black overflow-hidden select-none" ref={gameContainerRef}>
+    <div className={`fixed inset-0 flex flex-col items-center bg-black overflow-hidden select-none ${isMobile ? 'justify-start' : 'justify-center'}`} ref={gameContainerRef}>
       {/* Level Intro Screen */}
       {levelIntro && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-95 z-40">
@@ -3912,7 +3912,7 @@ export default function MolochGame() {
         </div>
       )}
       
-      <div className="w-full h-full flex justify-center items-center relative pb-16">
+      <div className={`w-full ${isMobile ? '' : 'h-full'} flex justify-center ${isMobile ? 'items-start mt-4' : 'items-center pb-16'} relative`}>
         <canvas
           ref={canvasRef}
           className="bg-black block"
