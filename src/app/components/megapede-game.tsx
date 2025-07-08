@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useChainId, useSwitchChain } from 'wagmi'
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useChainId, useSwitchChain, useAccount } from 'wagmi'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { parseEther, parseUnits } from 'viem'
 import { base } from 'wagmi/chains'
@@ -1396,8 +1396,10 @@ export default function MolochGame() {
   const { ready, authenticated, user, login, logout } = usePrivy()
   const { wallets } = useWallets()
   const wallet = wallets[0]
-  const address = wallet?.address as `0x${string}` | undefined
-  const isConnected = authenticated && !!address
+  const { address, isConnected } = useAccount()
+  const privyAddress = wallet?.address as `0x${string}` | undefined
+  const finalAddress = address || privyAddress
+  const isWalletConnected = authenticated && isConnected && !!finalAddress
   const chainId = useChainId()
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain({
     mutation: {
@@ -1416,7 +1418,7 @@ export default function MolochGame() {
     address: ARI_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
-    args: address ? [address as `0x${string}`] : undefined,
+    args: finalAddress ? [finalAddress as `0x${string}`] : undefined,
   })
   
   const { writeContract, data: burnTxHash, isPending: isBurnPending, error: burnError } = useWriteContract()
@@ -1761,14 +1763,14 @@ export default function MolochGame() {
 
   // Handle wallet connection effect
   useEffect(() => {
-    if (isConnected && address && gamePhase === 'connect') {
-      checkExistingBurn(address)
-    } else if (!isConnected && gamePhase !== 'connect') {
+    if (isWalletConnected && finalAddress && gamePhase === 'connect') {
+      checkExistingBurn(finalAddress)
+    } else if (!isWalletConnected && gamePhase !== 'connect') {
       setGamePhase('connect')
       setHasBurnedTokens(false)
       setBurnTransaction(null)
     }
-  }, [isConnected, address, gamePhase])
+  }, [isWalletConnected, finalAddress, gamePhase])
 
   // Check if user already has a verified burn
   const checkExistingBurn = async (userAddress: string) => {
@@ -1786,10 +1788,10 @@ export default function MolochGame() {
 
   // Handle burn confirmation - now with server verification
   useEffect(() => {
-    if (isBurnConfirmed && burnTxHash && address) {
+    if (isBurnConfirmed && burnTxHash && finalAddress) {
       verifyBurnOnServer(burnTxHash)
     }
-  }, [isBurnConfirmed, burnTxHash, address])
+  }, [isBurnConfirmed, burnTxHash, finalAddress])
 
   // Handle claim confirmation
   useEffect(() => {
@@ -1807,7 +1809,7 @@ export default function MolochGame() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           txHash,
-          userAddress: address
+          userAddress: finalAddress
         })
       })
 
@@ -1844,7 +1846,7 @@ export default function MolochGame() {
   const burnTokens = async () => {
     console.log('burnTokens called - chainId:', chainId, 'base.id:', base.id)
     
-    if (!address) {
+    if (!finalAddress) {
       console.log('No address connected')
       return
     }
@@ -1932,7 +1934,7 @@ export default function MolochGame() {
 
   // Submit high score and get reward signature
   const submitHighScore = async () => {
-    if (!address || !gameStateRef.current.score) return
+    if (!finalAddress || !gameStateRef.current.score) return
     
     setIsClaimingReward(true)
     try {
@@ -1940,7 +1942,7 @@ export default function MolochGame() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address,
+          address: finalAddress,
           score: gameStateRef.current.score
         })
       })
@@ -1981,10 +1983,10 @@ export default function MolochGame() {
 
   // Claim reward from faucet contract
   const claimReward = async () => {
-    if (!address || !rewardSignature) return
+    if (!finalAddress || !rewardSignature) return
     
     console.log('Starting claim process with signature:', rewardSignature)
-    console.log('Claiming for address:', address)
+    console.log('Claiming for address:', finalAddress)
     console.log('Faucet contract address:', FAUCET_CONTRACT_ADDRESS)
     console.log('Current chain ID:', chainId)
     
@@ -2008,7 +2010,7 @@ export default function MolochGame() {
         nonce: rewardSignature.nonce,
         signature: rewardSignature.signature,
         contractAddress: FAUCET_CONTRACT_ADDRESS,
-        playerAddress: address
+        playerAddress: finalAddress
       })
       
       // Call the faucet contract
@@ -2052,14 +2054,14 @@ export default function MolochGame() {
 
   // Mark burn as used in database
   const markBurnAsUsed = async () => {
-    if (!address || !burnTransaction) return
+    if (!finalAddress || !burnTransaction) return
     
     try {
       await fetch('/api/mark-burn-used', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAddress: address,
+          userAddress: finalAddress,
           txHash: burnTransaction
         })
       })
@@ -3953,11 +3955,11 @@ export default function MolochGame() {
   
   // Also fetch leaderboard when address changes
   useEffect(() => {
-    if (address) {
+    if (finalAddress) {
       console.log('🔗 Address connected, refreshing leaderboard...')
       fetchLeaderboard()
     }
-  }, [address])
+  }, [finalAddress])
   
   // Don't auto-start game since it's embedded in 404 page
   // User needs to manually start the game
@@ -4052,7 +4054,7 @@ export default function MolochGame() {
               </p>
             </div>
             
-            <p className="text-xs text-gray-400 mb-2">Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
+            <p className="text-xs text-gray-400 mb-2">Connected: {finalAddress?.slice(0, 6)}...{finalAddress?.slice(-4)}</p>
             <p className="text-xs text-gray-400 mb-2">Current Chain: {chainId} {chainId === base.id ? '(Base ✅)' : '(Need Base)'}</p>
             <p className="text-sm text-yellow-400 mb-4">
               Balance: {ariBalance ? (Number(ariBalance) / 1e18).toFixed(2) : '0'} ARI
@@ -4268,7 +4270,7 @@ export default function MolochGame() {
                   <div className="space-y-2">
                     {leaderboard.map((entry, index) => (
                       <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
-                        entry.address === address ? 'bg-blue-600 bg-opacity-50 border border-blue-400' : 'bg-gray-600'
+                        entry.address === finalAddress ? 'bg-blue-600 bg-opacity-50 border border-blue-400' : 'bg-gray-600'
                       }`}>
                         <div className="flex items-center space-x-3">
                           <span className="text-lg font-bold text-yellow-400">#{index + 1}</span>
@@ -4276,7 +4278,7 @@ export default function MolochGame() {
                         </div>
                         <div className="flex items-center space-x-3">
                           <span className="text-lg font-bold text-white">{entry.score}</span>
-                          {entry.address === address && (
+                          {entry.address === finalAddress && (
                             <span className="text-xs text-blue-300">YOU</span>
                           )}
                         </div>
