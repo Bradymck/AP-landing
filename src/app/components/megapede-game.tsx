@@ -1333,6 +1333,53 @@ export default function MolochGame() {
   const [leaderboard, setLeaderboard] = useState<Array<{address: string, score: number, claimed: boolean}>>([])
   const [hasSubmittedScore, setHasSubmittedScore] = useState(false)
   
+  // Dynamic difficulty based on faucet value
+  const [faucetBalance, setFaucetBalance] = useState<number>(0)
+  const [tokenPrice, setTokenPrice] = useState<number>(0)
+  const [difficultyMultiplier, setDifficultyMultiplier] = useState<number>(1)
+  const [tokenInfo, setTokenInfo] = useState<{
+    address: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    hasPrice: boolean;
+    dexScreenerUrl: string;
+  } | null>(null)
+  
+  // Fetch faucet info and calculate difficulty
+  const fetchFaucetInfo = async () => {
+    try {
+      const response = await fetch('/api/faucet-info')
+      const data = await response.json()
+      
+      setFaucetBalance(data.faucetBalance)
+      setTokenPrice(data.tokenPrice)
+      setTokenInfo(data.tokenInfo)
+      
+      // Calculate difficulty based on total pot value
+      const totalValue = data.faucetBalance * data.tokenPrice
+      
+      // Difficulty scaling: $1k = 1x, $10k = 2x, $100k = 5x, etc.
+      let difficulty = 1
+      if (totalValue >= 100000) difficulty = 5 // $100k+
+      else if (totalValue >= 50000) difficulty = 3 // $50k+
+      else if (totalValue >= 10000) difficulty = 2 // $10k+
+      else if (totalValue >= 5000) difficulty = 1.5 // $5k+
+      else difficulty = 1 // Under $5k
+      
+      setDifficultyMultiplier(difficulty)
+      
+      if (data.tokenInfo?.hasPrice) {
+        console.log(`💰 Pot value: $${totalValue.toLocaleString()}, Difficulty: ${difficulty}x`)
+      } else {
+        console.log(`🪙 Pot: ${data.faucetBalance.toLocaleString()} ${data.tokenInfo?.symbol || 'tokens'}, Difficulty: ${difficulty}x (no price data)`)
+      }
+    } catch (error) {
+      console.error('Failed to fetch faucet info:', error)
+      setDifficultyMultiplier(1) // Default to easy if fetch fails
+    }
+  }
+  
   // Wallet hooks
   const { ready, authenticated, user, login, logout } = usePrivy()
   const { wallets } = useWallets()
@@ -1691,6 +1738,14 @@ export default function MolochGame() {
     setGameStarted(true)
     setGameOver(false)
   }
+
+  // Fetch faucet info on component mount and periodically
+  useEffect(() => {
+    fetchFaucetInfo()
+    // Refresh faucet info every 30 seconds
+    const interval = setInterval(fetchFaucetInfo, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Handle wallet connection effect
   useEffect(() => {
@@ -3467,24 +3522,26 @@ export default function MolochGame() {
         })
         .filter((chain) => chain.segments.length > 0)
 
-      // Spawn spiders aggressively - much faster at higher levels
+      // Spawn spiders with difficulty-based scaling
       const now2 = Date.now()
-      // Aggressive spawn rate: starts at 3000ms, reduces to 500ms minimum
-      const spiderSpawnInterval = Math.max(500, 3000 - (state.level - 1) * 250)
+      // Base spawn rate adjusted by difficulty: easier when pot is small, harder when big
+      const baseSpawnInterval = Math.max(500, 3000 - (state.level - 1) * 250)
+      const difficultyAdjustedInterval = Math.max(300, baseSpawnInterval / difficultyMultiplier)
       
-      if (now2 - state.lastSpiderSpawnTime > spiderSpawnInterval) {
-        // More spiders at higher levels: 2-15 spiders based on level
-        const maxSpiders = Math.min(15, 2 + Math.floor(state.level * 1.5))
+      if (now2 - state.lastSpiderSpawnTime > difficultyAdjustedInterval) {
+        // Max spiders scaled by both level and difficulty
+        const baseMathSpiders = Math.min(15, 2 + Math.floor(state.level * 1.5))
+        const maxSpiders = Math.floor(baseMathSpiders * difficultyMultiplier)
         
         // Only spawn if fewer than max spiders for current level
         if (state.spiders.filter(s => s.isAlive).length < maxSpiders) {
           const spiderX = Math.random() * (GAME_WIDTH - SPIDER_SIZE * 2) + SPIDER_SIZE
           const spiderY = BORDER_WIDTH
           
-          // Create spider with level-appropriate speed
+          // Create spider with difficulty-scaled speed
           const spider = new Spider(
             { x: spiderX, y: spiderY },
-            2.0, // Increased base multiplier for more challenge (was 1.5)
+            2.0 * difficultyMultiplier, // Speed scales with difficulty
             SPIDER_SIZE
           )
           state.spiders.push(spider)
@@ -3919,6 +3976,50 @@ export default function MolochGame() {
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 via-orange-900 to-black bg-opacity-95 z-30">
           <div className="text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-80 rounded-xl border border-orange-500">
             <h2 className="text-3xl font-bold mb-4 text-orange-400">🔥 Burn ARI Tokens</h2>
+            
+            {/* Pot Value & Difficulty Display */}
+            <div className="bg-gray-900 border border-green-500 rounded-lg p-3 mb-4">
+              {tokenInfo?.hasPrice && (faucetBalance * tokenPrice) >= 200 ? (
+                <p className="text-sm text-green-400 font-bold">💰 Current Pot: ${((faucetBalance * tokenPrice) || 0).toLocaleString()}</p>
+              ) : (
+                <div>
+                  <p className="text-sm text-green-400 font-bold">
+                    🪙 Current Pot: {faucetBalance.toLocaleString()}{' '}
+                    {tokenInfo?.dexScreenerUrl ? (
+                      <a 
+                        href={tokenInfo.dexScreenerUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                      >
+                        {tokenInfo.symbol || 'tokens'}
+                      </a>
+                    ) : (
+                      tokenInfo?.symbol || 'tokens'
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {tokenInfo?.dexScreenerUrl ? (
+                      <a 
+                        href={tokenInfo.dexScreenerUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-gray-400 hover:text-gray-300 underline cursor-pointer"
+                      >
+                        {tokenInfo.name || 'Unknown Token'} ↗
+                      </a>
+                    ) : (
+                      tokenInfo?.name || 'Unknown Token'
+                    )}
+                  </p>
+                </div>
+              )}
+              <p className="text-xs text-yellow-400">⚡ Difficulty: {difficultyMultiplier}x {difficultyMultiplier >= 3 ? '(EXTREME)' : difficultyMultiplier >= 2 ? '(HARD)' : difficultyMultiplier >= 1.5 ? '(MEDIUM)' : '(EASY)'}</p>
+              <p className="text-xs text-gray-400">
+                {tokenInfo?.hasPrice && (faucetBalance * tokenPrice) >= 200 ? 'Higher pot = harder game, bigger rewards!' : 'Difficulty based on token quantity'}
+              </p>
+            </div>
+            
             <p className="text-xs text-gray-400 mb-2">Connected: {address?.slice(0, 6)}...{address?.slice(-4)}</p>
             <p className="text-xs text-gray-400 mb-2">Current Chain: {chainId} {chainId === base.id ? '(Base ✅)' : '(Need Base)'}</p>
             <p className="text-sm text-yellow-400 mb-4">
