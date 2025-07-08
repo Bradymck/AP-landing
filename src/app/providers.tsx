@@ -5,13 +5,14 @@ import { useState } from 'react'
 import { WagmiProvider, createConfig, http } from 'wagmi'
 import { base, baseSepolia, mainnet, gnosis } from 'wagmi/chains'
 import { injected, walletConnect, metaMask } from 'wagmi/connectors'
+import { PrivyProvider } from '@privy-io/react-auth'
 
-// Support multiple chains for seamless switching
+// Keep original wagmi config - Privy works alongside it
 export const config = createConfig({
-  chains: [base, baseSepolia, mainnet, gnosis], // Add common chains user might be on
+  chains: [base, baseSepolia, mainnet, gnosis],
   connectors: [
-    injected(), // MetaMask, Rabby, etc.
-    metaMask(), // Specific MetaMask connector for Brave browser compatibility
+    injected(),
+    metaMask(),
     walletConnect({ 
       projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'fallback' 
     }),
@@ -28,8 +29,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient())
 
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </WagmiProvider>
+    <PrivyProvider
+      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
+      config={{
+        appearance: {
+          theme: 'dark',
+          accentColor: '#676FFF',
+        },
+        loginMethods: ['wallet', 'email'],
+        embeddedWallets: {
+          createOnLogin: 'users-without-wallets',
+          noPromptOnSignature: true
+        },
+        walletConnectCloudProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={config}>
+          {children}
+        </WagmiProvider>
+      </QueryClientProvider>
+    </PrivyProvider>
   )
 }

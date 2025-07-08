@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useReadContract, useChainId, useSwitchChain } from 'wagmi'
-import { injected } from 'wagmi/connectors'
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useChainId, useSwitchChain } from 'wagmi'
+import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { parseEther, parseUnits } from 'viem'
 import { base } from 'wagmi/chains'
 
@@ -53,6 +53,8 @@ class SoundManager {
   private musicTracks: HTMLAudioElement[] = []
   private currentMusic: HTMLAudioElement | null = null
   private currentMusicIndex: number = 0
+  private previousIntroIndices: number[] = []
+  private previousMusicIndices: number[] = []
   private bulletLoop: HTMLAudioElement | null = null
   private plasmaLoop: HTMLAudioElement | null = null
   private isBulletLooping: boolean = false
@@ -230,8 +232,27 @@ class SoundManager {
       return
     }
     
-    const randomIndex = Math.floor(Math.random() * this.introSounds.length)
+    // Get available indices (exclude recently played)
+    const availableIndices = Array.from({ length: this.introSounds.length }, (_, i) => i)
+      .filter(i => !this.previousIntroIndices.includes(i))
+    
+    // If all have been played recently, reset but keep the last one to avoid immediate repeat
+    if (availableIndices.length === 0) {
+      const lastPlayed = this.previousIntroIndices[this.previousIntroIndices.length - 1]
+      this.previousIntroIndices = lastPlayed !== undefined ? [lastPlayed] : []
+      availableIndices.push(...Array.from({ length: this.introSounds.length }, (_, i) => i)
+        .filter(i => i !== lastPlayed))
+    }
+    
+    // Pick random from available
+    const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)]
     const introSound = this.introSounds[randomIndex]
+    
+    // Update history (keep last 3-4 to prevent repetition)
+    this.previousIntroIndices.push(randomIndex)
+    if (this.previousIntroIndices.length > Math.min(4, Math.floor(this.introSounds.length * 0.6))) {
+      this.previousIntroIndices.shift()
+    }
     
     // Playing random intro sound
     
@@ -272,10 +293,28 @@ class SoundManager {
     // Wait a moment for audio context to be ready
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    // Get track for this level (cycle through available tracks)
-    const trackIndex = (level - 1) % this.musicTracks.length
+    // Get available tracks (exclude recently played)
+    const availableIndices = Array.from({ length: this.musicTracks.length }, (_, i) => i)
+      .filter(i => !this.previousMusicIndices.includes(i))
+    
+    // If all have been played recently, reset but keep the last one to avoid immediate repeat
+    if (availableIndices.length === 0) {
+      const lastPlayed = this.previousMusicIndices[this.previousMusicIndices.length - 1]
+      this.previousMusicIndices = lastPlayed !== undefined ? [lastPlayed] : []
+      availableIndices.push(...Array.from({ length: this.musicTracks.length }, (_, i) => i)
+        .filter(i => i !== lastPlayed))
+    }
+    
+    // Pick random track from available
+    const trackIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)]
     this.currentMusic = this.musicTracks[trackIndex]
     this.currentMusicIndex = trackIndex
+    
+    // Update history (keep last 3-4 to prevent repetition)
+    this.previousMusicIndices.push(trackIndex)
+    if (this.previousMusicIndices.length > Math.min(4, Math.floor(this.musicTracks.length * 0.6))) {
+      this.previousMusicIndices.shift()
+    }
     
     console.log(`Attempting to start music track ${trackIndex + 1} for level ${level}`)
     
@@ -326,11 +365,14 @@ class SoundManager {
   }
 
   stopMusic() {
-    if (this.currentMusic) {
-      this.currentMusic.pause()
-      this.currentMusic.currentTime = 0
-      this.currentMusic = null
-    }
+    // Stop all music tracks to prevent overlap
+    this.musicTracks.forEach(track => {
+      if (!track.paused) {
+        track.pause()
+        track.currentTime = 0
+      }
+    })
+    this.currentMusic = null
   }
 
   setMusicVolume(volume: number) {
@@ -1292,9 +1334,11 @@ export default function MolochGame() {
   const [hasSubmittedScore, setHasSubmittedScore] = useState(false)
   
   // Wallet hooks
-  const { address, isConnected } = useAccount()
-  const { connect } = useConnect()
-  const { disconnect } = useDisconnect()
+  const { ready, authenticated, user, login, logout } = usePrivy()
+  const { wallets } = useWallets()
+  const wallet = wallets[0]
+  const address = wallet?.address as `0x${string}` | undefined
+  const isConnected = authenticated && !!address
   const chainId = useChainId()
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain({
     mutation: {
@@ -1313,7 +1357,7 @@ export default function MolochGame() {
     address: ARI_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
-    args: address ? [address] : undefined,
+    args: address ? [address as `0x${string}`] : undefined,
   })
   
   const { writeContract, data: burnTxHash, isPending: isBurnPending, error: burnError } = useWriteContract()
@@ -1871,6 +1915,18 @@ export default function MolochGame() {
     console.log('Starting claim process with signature:', rewardSignature)
     console.log('Claiming for address:', address)
     console.log('Faucet contract address:', FAUCET_CONTRACT_ADDRESS)
+    console.log('Current chain ID:', chainId)
+    
+    // Ensure we're on Base network
+    if (chainId !== base.id) {
+      console.log('Switching to Base network...')
+      try {
+        await switchChain({ chainId: base.id })
+      } catch (error) {
+        console.error('Failed to switch network:', error)
+        return
+      }
+    }
     
     try {
       // Convert amount to Wei (assuming amount is in tokens with 18 decimals)
@@ -3800,7 +3856,7 @@ export default function MolochGame() {
               Connect your wallet to start playing and earn Moonstone token rewards!
             </p>
             <button
-              onClick={() => connect({ connector: injected() })}
+              onClick={() => login()}
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all"
             >
               🔗 Connect Wallet
@@ -3878,7 +3934,7 @@ export default function MolochGame() {
             
             <div>
               <button
-                onClick={() => disconnect()}
+                onClick={() => logout()}
                 className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full text-sm"
               >
                 Disconnect
