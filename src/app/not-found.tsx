@@ -27,15 +27,7 @@ export default function NotFound() {
   if (showGame) {
     return (
       <div className="fixed inset-0 bg-black">
-        {/* Simple back button in top-left corner */}
-        <button 
-          className="absolute top-4 left-4 z-50 text-cyan-400 hover:text-cyan-300 text-sm underline"
-          onClick={() => setShowGame(false)}
-        >
-          ← Back to 404
-        </button>
-        
-        {/* Fullscreen game */}
+        {/* Fullscreen game - positioned at top for mobile */}
         <MolochGame />
       </div>
     );

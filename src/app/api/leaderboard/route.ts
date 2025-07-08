@@ -24,15 +24,11 @@ export async function GET(request: NextRequest) {
 
     console.log(`Fetched ${scores?.length || 0} scores from leaderboard`)
 
-    // Transform the data to match the expected format
-    const leaderboard = scores?.map(score => ({
-      address: score.player_address,
-      score: score.score,
-      claimed: false, // We can add this field to track claim status later if needed
-      timestamp: score.created_at
-    })) || []
-
-    return NextResponse.json({ leaderboard })
+    // Return scores in the format expected by frontend
+    return NextResponse.json({ 
+      scores: scores || [],
+      count: scores?.length || 0 
+    })
 
   } catch (error) {
     console.error('Error fetching leaderboard:', error)

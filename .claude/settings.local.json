@@ -40,7 +40,8 @@
       "Bash(supabase functions deploy:*)",
       "Bash(supabase secrets:*)",
       "WebFetch(domain:basescan.org)",
-      "mcp__supabase__query"
+      "mcp__supabase__query",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

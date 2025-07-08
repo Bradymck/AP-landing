@@ -1775,6 +1775,46 @@ export default function MolochGame() {
     }
   }
 
+  // Fetch leaderboard from Supabase
+  const fetchLeaderboard = async () => {
+    console.log('🏆 Fetching leaderboard from API...')
+    try {
+      const response = await fetch('/api/leaderboard')
+      console.log('📡 Response status:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('📊 Raw leaderboard data:', data)
+        console.log('📊 Data type:', typeof data, 'scores array?', Array.isArray(data.scores))
+        
+        if (data.scores && Array.isArray(data.scores)) {
+          // Transform and sort Supabase format to leaderboard format
+          const transformedScores = data.scores
+            .map((entry: any) => ({
+              address: entry.player_address || entry.address,
+              score: entry.score,
+              claimed: entry.claimed || false
+            }))
+            .sort((a: any, b: any) => b.score - a.score) // Sort highest to lowest
+          
+          console.log('✅ Transformed & sorted leaderboard:', transformedScores)
+          console.log('🎯 Top score:', transformedScores[0]?.score, 'Total entries:', transformedScores.length)
+          setLeaderboard(transformedScores)
+        } else {
+          console.warn('⚠️ Unexpected data format - no scores array:', data)
+          setLeaderboard([])
+        }
+      } else {
+        const errorText = await response.text()
+        console.error('❌ Failed to fetch leaderboard:', response.status, errorText)
+        setLeaderboard([])
+      }
+    } catch (error) {
+      console.error('💥 Error fetching leaderboard:', error)
+      setLeaderboard([])
+    }
+  }
+
   // Submit high score and get reward signature
   const submitHighScore = async () => {
     if (!address || !gameStateRef.current.score) return
@@ -1794,25 +1834,31 @@ export default function MolochGame() {
         const data = await response.json()
         setRewardSignature(data)
         setHasSubmittedScore(true)
-        // Add to leaderboard
-        const newEntry = { address, score: gameStateRef.current.score, claimed: false }
-        setLeaderboard(prev => [...prev, newEntry].sort((a, b) => b.score - a.score))
+        // Fetch updated leaderboard from backend
+        await fetchLeaderboard()
         setGamePhase('leaderboard')
       } else {
         const errorData = await response.json().catch(() => ({}))
-        if (response.status === 400 && errorData.error?.includes('top 10')) {
-          console.log('Score does not qualify for rewards - not in top 10')
-          // Still add to leaderboard but without reward signature
-          const newEntry = { address, score: gameStateRef.current.score, claimed: false }
-          setLeaderboard(prev => [...prev, newEntry].sort((a, b) => b.score - a.score))
+        if (response.status === 400 && (errorData.error?.includes('highest score') || errorData.error?.includes('top 10') || errorData.error?.includes('qualify'))) {
+          console.log('Score does not qualify for rewards:', errorData.error)
+          // Still fetch leaderboard to show all scores
+          await fetchLeaderboard()
           setHasSubmittedScore(true)
           setGamePhase('leaderboard')
         } else {
           console.error('Failed to get reward signature:', errorData.error || 'Unknown error')
+          // Always go to leaderboard even on errors to provide feedback
+          await fetchLeaderboard()
+          setHasSubmittedScore(true)
+          setGamePhase('leaderboard')
         }
       }
     } catch (error) {
       console.error('Error submitting high score:', error)
+      // Always go to leaderboard even on network errors
+      await fetchLeaderboard()
+      setHasSubmittedScore(true)
+      setGamePhase('leaderboard')
     } finally {
       setIsClaimingReward(false)
     }
@@ -3492,32 +3538,52 @@ export default function MolochGame() {
     
     // Get the container width (responsive to screen size)
     const containerWidth = container.clientWidth
+    const containerHeight = container.clientHeight
     
-    // Set a maximum width to prevent the game from getting too large
-    const maxWidth = Math.min(containerWidth, BASE_GAME_WIDTH)
+    // Determine if mobile
+    const isMobileDevice = window.innerWidth < 768
     
-    // Calculate the height proportionally
+    // Calculate aspect ratio
     const aspectRatio = BASE_GAME_HEIGHT / BASE_GAME_WIDTH
-    const height = maxWidth * aspectRatio
     
-    // Important: Set the logical canvas dimensions to match base dimensions
-    // This ensures game logic uses consistent coordinates
+    // For desktop, scale up the game while maintaining aspect ratio
+    let displayWidth, displayHeight, scaleFactor
+    
+    if (isMobileDevice) {
+      // Mobile: limit to base dimensions or container width
+      displayWidth = Math.min(containerWidth, BASE_GAME_WIDTH)
+      displayHeight = displayWidth * aspectRatio
+      scaleFactor = displayWidth / BASE_GAME_WIDTH
+    } else {
+      // Desktop: scale up to fill more screen space
+      // Use 90% of container height to leave room for UI elements
+      const maxHeight = containerHeight * 0.9
+      const maxWidth = containerWidth * 0.9
+      
+      // Calculate scale based on which dimension is more constraining
+      const scaleByHeight = maxHeight / BASE_GAME_HEIGHT
+      const scaleByWidth = maxWidth / BASE_GAME_WIDTH
+      scaleFactor = Math.min(scaleByHeight, scaleByWidth)
+      
+      // Apply scale factor to get display dimensions
+      displayWidth = BASE_GAME_WIDTH * scaleFactor
+      displayHeight = BASE_GAME_HEIGHT * scaleFactor
+    }
+    
+    // Always keep game logic at base dimensions for consistent gameplay
     canvas.width = BASE_GAME_WIDTH
     canvas.height = BASE_GAME_HEIGHT
-    
-    // Set display size via CSS for responsive scaling
-    canvas.style.width = `${maxWidth}px`
-    canvas.style.height = `${height}px`
-    
-    // Update game dimensions (keeping logic consistent)
     GAME_WIDTH = BASE_GAME_WIDTH
     GAME_HEIGHT = BASE_GAME_HEIGHT
-    SCALE_FACTOR = maxWidth / BASE_GAME_WIDTH
+    SCALE_FACTOR = scaleFactor
     
-    // Detect if we're on a mobile device
-    const mobileDetected = window.innerWidth < 768
-    setIsMobile(mobileDetected)
-    setShowControls(mobileDetected)
+    // Set display size via CSS for visual scaling
+    canvas.style.width = `${displayWidth}px`
+    canvas.style.height = `${displayHeight}px`
+    
+    // Update mobile state
+    setIsMobile(isMobileDevice)
+    setShowControls(isMobileDevice)
   }
 
   useEffect(() => {
@@ -3663,97 +3729,46 @@ export default function MolochGame() {
     return () => clearInterval(updateInterval)
   }, [gameStarted])
   
+  // Monitor for fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [])
+  
+  // Fetch leaderboard on component mount
+  useEffect(() => {
+    console.log('🚀 Component mounted, fetching leaderboard...')
+    fetchLeaderboard()
+  }, [])
+  
+  // Fetch leaderboard when viewing leaderboard screen
+  useEffect(() => {
+    if (gamePhase === 'leaderboard') {
+      console.log('🏆 Leaderboard phase detected, fetching data...')
+      fetchLeaderboard()
+    }
+  }, [gamePhase])
+  
+  // Also fetch leaderboard when address changes
+  useEffect(() => {
+    if (address) {
+      console.log('🔗 Address connected, refreshing leaderboard...')
+      fetchLeaderboard()
+    }
+  }, [address])
+  
   // Don't auto-start game since it's embedded in 404 page
   // User needs to manually start the game
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center bg-black overflow-hidden" ref={gameContainerRef} style={{justifyContent: isMobile ? 'flex-start' : 'center', paddingTop: isMobile ? '0.5rem' : '0'}}>
-      {/* Score and Level Display */}
-      {gameStarted && !gameOver && (
-        <>
-          {/* Energy Meter - More Visible */}
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
-            <div className="bg-black bg-opacity-70 rounded-lg p-3 border border-cyan-400">
-              <div className="text-center text-cyan-300 text-xs font-bold mb-1">
-                {isEnergized ? 'ENERGIZED!' : 'ENERGY'}
-              </div>
-              
-              {/* Energy Bar Background */}
-              <div className="w-32 h-3 bg-gray-800 rounded-full border border-gray-600 overflow-hidden">
-                {/* Energy Fill */}
-                <div 
-                  className={`h-full transition-all duration-300 ${
-                    isEnergized 
-                      ? 'bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 animate-pulse' 
-                      : energyPercentage >= 100 
-                        ? 'bg-yellow-400 animate-pulse' 
-                        : 'bg-gradient-to-r from-green-500 to-cyan-400'
-                  }`}
-                  style={{ width: `${energyPercentage}%` }}
-                />
-                
-                {/* Energized Overlay Effect */}
-                {isEnergized && (
-                  <div className="absolute inset-0 bg-white bg-opacity-20 animate-ping rounded-full" />
-                )}
-              </div>
-              
-              {/* Status Text */}
-              <div className="text-center text-xs mt-1">
-                {isEnergized 
-                  ? <span className="text-yellow-400 font-bold animate-pulse">{energySeconds}s</span>
-                  : <span className="text-cyan-300">{Math.floor(energyPercentage)}%</span>
-                }
-              </div>
-            </div>
-            
-            {/* Energized Glow Effect */}
-            {isEnergized && (
-              <div className="absolute inset-0 bg-yellow-400 bg-opacity-30 rounded-lg animate-pulse -z-10 blur-sm" />
-            )}
-          </div>
-          
-          {/* Mute Controls - Top Right */}
-          <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-            {/* SFX Mute Button */}
-            <button
-              onClick={() => {
-                if (soundManager) {
-                  const newMuted = soundManager.toggleSfxMute();
-                  setSfxMuted(newMuted);
-                }
-              }}
-              className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
-                sfxMuted 
-                  ? 'bg-red-600 border-red-500 text-white' 
-                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
-              }`}
-              title={sfxMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
-            >
-              {sfxMuted ? '🔇' : '🔊'}
-            </button>
-            
-            {/* Music Mute Button */}
-            <button
-              onClick={() => {
-                if (soundManager) {
-                  const newMuted = soundManager.toggleMusicMute();
-                  setMusicMuted(newMuted);
-                }
-              }}
-              className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
-                musicMuted 
-                  ? 'bg-red-600 border-red-500 text-white' 
-                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
-              }`}
-              title={musicMuted ? 'Unmute Music' : 'Mute Music'}
-            >
-              {musicMuted ? '🔕' : '🎵'}
-            </button>
-          </div>
-        </>
-      )}
-      
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black overflow-hidden select-none" ref={gameContainerRef}>
       {/* Level Intro Screen */}
       {levelIntro && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-95 z-40">
@@ -3897,13 +3912,10 @@ export default function MolochGame() {
         </div>
       )}
       
-      <div className="w-full h-full flex justify-center items-center relative">
+      <div className="w-full h-full flex justify-center items-center relative pb-16">
         <canvas
           ref={canvasRef}
-          width={BASE_GAME_WIDTH}
-          height={BASE_GAME_HEIGHT}
-          className="bg-black max-w-full max-h-full block object-contain"
-          style={{ width: 'auto', height: 'auto' }}
+          className="bg-black block"
         />
         
         {/* Game Over screen overlay */}
@@ -3915,13 +3927,13 @@ export default function MolochGame() {
               
               {gameStateRef.current.score > 0 && (
                 <div className="mb-6 p-4 bg-gray-700 rounded-lg border border-gray-600">
-                  <p className="text-lg text-green-400 mb-4">🎉 Submitting your high score...</p>
+                  <p className="text-lg text-yellow-400 mb-4">📊 Submit score to check for rewards</p>
                   <button
                     onClick={submitHighScore}
                     disabled={isClaimingReward}
-                    className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all disabled:transform-none"
+                    className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all disabled:transform-none"
                   >
-                    {isClaimingReward ? '📊 Submitting...' : '📊 Submit to Leaderboard'}
+                    {isClaimingReward ? '📊 Checking...' : '📊 Submit & Check Leaderboard'}
                   </button>
                 </div>
               )}
@@ -3935,7 +3947,10 @@ export default function MolochGame() {
                     if (!confirmed) return;
                   }
                   gameStateRef.current.score = 0;
+                  gameStateRef.current.level = 1;
+                  gameStateRef.current.gameOver = false; // Critical: Reset gameStateRef gameOver flag
                   setScore(0);
+                  setLevel(1);
                   setRewardSignature(null);
                   setHasClaimed(false);
                   setHasSubmittedScore(false);
@@ -4036,7 +4051,10 @@ export default function MolochGame() {
                 <button
                   onClick={() => {
                     gameStateRef.current.score = 0;
+                    gameStateRef.current.level = 1;
+                    gameStateRef.current.gameOver = false; // Critical: Reset gameStateRef gameOver flag
                     setScore(0);
+                    setLevel(1);
                     setRewardSignature(null);
                     setHasClaimed(false);
                     setHasSubmittedScore(false);
@@ -4058,23 +4076,103 @@ export default function MolochGame() {
         {/* Score and level are now drawn directly on the canvas */}
       </div>
       
-      {/* Mobile Game Controls - Fixed at bottom for fullscreen */}
-      {isMobile && gamePhase === 'playing' && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-800 bg-opacity-90 p-3 overflow-visible border-t-2 border-cyan-500">
+      {/* Game Boy Style Bottom UI Bar */}
+      {gameStarted && (
+        <div className="absolute bottom-0 left-0 right-0 bg-black border-t-2 border-cyan-400 z-30">
+          {/* Main UI Bar */}
+          <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-gray-900 to-gray-800">
+            {/* Left Side - Score & Level */}
+            <div className="flex items-center gap-4 text-white">
+              <div className="text-sm font-mono">
+                <div className="text-yellow-400">SCORE: {score}</div>
+                <div className="text-cyan-400">LEVEL: {level}</div>
+              </div>
+            </div>
+            
+            {/* Center - Energy Bar */}
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-cyan-300 font-bold">
+                {isEnergized ? 'ENERGIZED!' : 'ENERGY'}
+              </div>
+              <div className="w-20 h-2 bg-gray-800 rounded-full border border-gray-600 overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-300 ${
+                    isEnergized 
+                      ? 'bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 animate-pulse' 
+                      : energyPercentage >= 100 
+                        ? 'bg-yellow-400 animate-pulse' 
+                        : 'bg-gradient-to-r from-green-500 to-cyan-400'
+                  }`}
+                  style={{ width: `${energyPercentage}%` }}
+                />
+              </div>
+              <div className="text-xs text-cyan-300 min-w-[2rem]">
+                {isEnergized 
+                  ? `${energySeconds}s`
+                  : `${Math.floor(energyPercentage)}%`
+                }
+              </div>
+            </div>
+            
+            {/* Right Side - Mute Controls */}
+            <div className="flex items-center gap-1">
+              {/* SFX Mute Button */}
+              <button
+                onClick={() => {
+                  if (soundManager) {
+                    const newMuted = soundManager.toggleSfxMute();
+                    setSfxMuted(newMuted);
+                  }
+                }}
+                className={`w-8 h-8 rounded border flex items-center justify-center text-xs transition-all ${
+                  sfxMuted 
+                    ? 'bg-red-600 border-red-500 text-white' 
+                    : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                }`}
+                title={sfxMuted ? 'Unmute SFX' : 'Mute SFX'}
+              >
+                {sfxMuted ? '🔇' : '🔊'}
+              </button>
+              
+              {/* Music Mute Button */}
+              <button
+                onClick={() => {
+                  if (soundManager) {
+                    const newMuted = soundManager.toggleMusicMute();
+                    setMusicMuted(newMuted);
+                  }
+                }}
+                className={`w-8 h-8 rounded border flex items-center justify-center text-xs transition-all ${
+                  musicMuted 
+                    ? 'bg-red-600 border-red-500 text-white' 
+                    : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                }`}
+                title={musicMuted ? 'Unmute Music' : 'Mute Music'}
+              >
+                {musicMuted ? '🔕' : '🎵'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Game Controls - Mobile only */}
+      {gamePhase === 'playing' && isMobile && (
+        <div className="absolute bottom-12 left-0 right-0 bg-gray-800 border-t-2 border-gray-600 z-20">
           {/* Controls toggle button */}
           <div className="flex justify-center mb-4 relative">
             <button 
               className="bg-gray-700 text-white px-4 py-1 rounded-md text-sm"
               onClick={() => setShowControls(!showControls)}
-            >
-              {showControls ? 'Hide Controls' : 'Show Controls'}
-            </button>
-            
-            {/* Auto-shoot indicator */}
-            {gameStateRef.current.autoShootEnabled && (
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-red-600 rounded-full w-3 h-3"></div>
-            )}
-          </div>
+              >
+                {showControls ? 'Hide Controls' : 'Show Controls'}
+              </button>
+              
+              {/* Auto-shoot indicator */}
+              {gameStateRef.current.autoShootEnabled && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-red-600 rounded-full w-3 h-3"></div>
+              )}
+            </div>
           
           {/* Game Controls - only shown when enabled */}
           {showControls && (

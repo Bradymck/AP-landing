@@ -40,10 +40,10 @@ serve(async (req) => {
     // Create message to sign - this must match EXACTLY what the contract expects
     const amountInWei = ethers.parseEther(rewardAmount)
     
-    // Contract expects nonce as string, so sign with string nonce
+    // Contract expects nonce as uint256, so sign with numeric nonce
     const packedMessage = ethers.solidityPacked(
-      ['address', 'uint256', 'string'],
-      [playerAddress, amountInWei, nonceString]
+      ['address', 'uint256', 'uint256'],
+      [playerAddress, amountInWei, nonce]
     )
     
     // Hash the packed message
