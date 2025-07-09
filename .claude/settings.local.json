@@ -42,7 +42,8 @@
       "WebFetch(domain:basescan.org)",
       "mcp__supabase__query",
       "Bash(npx tsc:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(npx supabase migration:*)"
     ],
     "deny": []
   }
