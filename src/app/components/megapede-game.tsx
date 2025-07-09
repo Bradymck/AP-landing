@@ -36,7 +36,7 @@ const FAUCET_ABI = [
   {
     inputs: [
       { name: 'amount', type: 'uint256' },
-      { name: 'nonce', type: 'string' },
+      { name: 'nonce', type: 'uint256' },
       { name: 'signature', type: 'bytes' }
     ],
     name: 'claimReward',
@@ -2020,7 +2020,7 @@ export default function MolochGame() {
         functionName: 'claimReward',
         args: [
           amountInWei,
-          rewardSignature.nonce,
+          BigInt(rewardSignature.nonce), // Convert string nonce to BigInt for uint256
           rewardSignature.signature as `0x${string}`
         ],
       })

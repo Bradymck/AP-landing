@@ -2,21 +2,15 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
-import { WagmiProvider, createConfig, http } from 'wagmi'
+import { http } from 'wagmi'
 import { base, baseSepolia, mainnet, gnosis } from 'wagmi/chains'
-import { injected, walletConnect, metaMask } from 'wagmi/connectors'
 import { PrivyProvider } from '@privy-io/react-auth'
+// Import createConfig and WagmiProvider from @privy-io/wagmi for proper Privy integration
+import { createConfig, WagmiProvider } from '@privy-io/wagmi'
 
-// Keep original wagmi config - Privy works alongside it
+// Use Privy's createConfig for proper integration with embedded wallets
 export const config = createConfig({
   chains: [base, baseSepolia, mainnet, gnosis],
-  connectors: [
-    injected(),
-    metaMask(),
-    walletConnect({ 
-      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'fallback' 
-    }),
-  ],
   transports: {
     [base.id]: http(),
     [baseSepolia.id]: http(),
