@@ -101,8 +101,12 @@ class SoundManager {
       }
     })
 
-    // Load intro sounds
-    const introFiles = ['baloons.mp3', 'not-my-chair.mp3', 'noway.mp3', 'seahorses.mp3']
+    // Load intro sounds - all available files
+    const introFiles = [
+      'ash.mp3', 'baloons.mp3', 'bomb.mp3', 'butt.mp3', 
+      'chez.mp3', 'doom.mp3', 'jiggle.mp3', 'not-my-chair.mp3', 
+      'noway.mp3', 'pizza.mp3', 'seahorses.mp3', 'tacos.mp3'
+    ]
     introFiles.forEach(file => {
       try {
         const audio = new Audio(`/sfx/intros/${file}`)
@@ -260,9 +264,9 @@ class SoundManager {
     const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)]
     const introSound = this.introSounds[randomIndex]
     
-    // Update history (keep last 3-4 to prevent repetition)
+    // Update history (keep last 6-8 intros to prevent repetition with 12 sounds)
     this.previousIntroIndices.push(randomIndex)
-    if (this.previousIntroIndices.length > Math.min(4, Math.floor(this.introSounds.length * 0.6))) {
+    if (this.previousIntroIndices.length > Math.min(8, Math.floor(this.introSounds.length * 0.7))) {
       this.previousIntroIndices.shift()
     }
     
@@ -543,9 +547,9 @@ const SPIDER_SIZE = 20
 const PARTICLE_COUNT = 8 // Reduced for performance optimization
 
 // Enemy scaling constants
-const BASE_MOLOCH_SPEED = 0.6 // Base speed for level 1 (reduced from 1.0)
-const BASE_SPIDER_SPEED = 0.8 // Base spider speed for level 1 (increased for more challenge)
-const SPEED_INCREASE_PER_LEVEL = 0.15 // Speed increases more aggressively per level
+const BASE_MOLOCH_SPEED = 0.5 // Base speed for level 1 (reduced for easier start)
+const BASE_SPIDER_SPEED = 0.6 // Base spider speed for level 1 (reduced for balance)
+const SPEED_INCREASE_PER_LEVEL = 0.08 // Speed increases more gradually per level (reduced from 0.15)
 const BASE_SEGMENT_COUNT = 20 // Base Moloch centipede length for level 1
 const SEGMENTS_INCREASE_LEVEL = 3 // Moloch centipede grows longer every X levels
 
@@ -769,8 +773,8 @@ class MolochChain {
     this.segments = []
     
     // Adjust delay based on level (longer delay = slower movement at level 1)
-    // At level 1: 70ms, level 2: 50ms, level 3+: 30ms
-    this.delay = Math.max(30, 90 - (level - 1) * 20)
+    // At level 1: 100ms, level 2: 85ms, level 3: 70ms, etc (more gradual)
+    this.delay = Math.max(40, 100 - (level - 1) * 15)
     this.lastUpdateTime = Date.now()
     
     // Use the global level emoji instead of accessing gameStateRef
@@ -1473,7 +1477,7 @@ export default function MolochGame() {
     lastShootTime: 0,
     lastUpdateTime: 0,
     lastSpiderSpawnTime: 0,
-    spiderSpawnRate: 10000,
+    spiderSpawnRate: 15000, // Increased from 10000 to spawn spiders less frequently
     lastPowerUpSpawnTime: 0,
     powerUpSpawnRate: 45000, // Increased from 15000 to 45000 (45 seconds) to make power-ups more rare
     spiderKillCount: 0, // Track spider kills for power-up spawning
@@ -1485,7 +1489,7 @@ export default function MolochGame() {
     levelEmoji: "",
     // Enhanced centipede management
     centipedesSpawned: 0, // How many centipedes spawned this level
-    maxCentipedesPerLevel: 4, // Total centipedes to spawn per level (ensures longer gameplay)
+    maxCentipedesPerLevel: 3, // Total centipedes to spawn per level (reduced from 4 for balance)
     roundTripTriggers: 0, // Track round trips to spawn additional centipedes
     lastKeyResetTime: 0, // Track time for stuck key detection
     lastCentipedeKillTime: 0, // Track when last centipede segment was killed
@@ -1624,8 +1628,8 @@ export default function MolochGame() {
       return
     }
     
-    // Create Moloch centipede chain with length based on level
-    const bonusSegments = state.level - 1 // One extra segment per level
+    // Create Moloch centipede chain with length based on level (slower growth)
+    const bonusSegments = Math.floor((state.level - 1) / 2) // One extra segment every 2 levels
     const segmentCount = BASE_SEGMENT_COUNT + bonusSegments
     
     const startX = Math.random() > 0.5 ? BORDER_WIDTH : GAME_WIDTH - BORDER_WIDTH - SEGMENT_SIZE
@@ -1710,8 +1714,8 @@ export default function MolochGame() {
     CURRENT_LEVEL_EMOJI = state.levelEmoji // Update the global emoji variable
     CURRENT_GAME_LEVEL = state.level     // Update the global level variable
 
-    // Significantly more mushrooms
-    const mushroomCount = 80 + state.level * 10 // Increased from 30 to 80
+    // Balanced mushroom count for better gameplay
+    const mushroomCount = 40 + state.level * 5 // Reduced from 80 to 40 base
 
     // Create mushrooms in the top half of the screen
     for (let i = 0; i < mushroomCount * 0.6; i++) {
@@ -3550,12 +3554,12 @@ export default function MolochGame() {
       // Spawn spiders with difficulty-based scaling
       const now2 = Date.now()
       // Base spawn rate adjusted by difficulty: easier when pot is small, harder when big
-      const baseSpawnInterval = Math.max(500, 3000 - (state.level - 1) * 250)
-      const difficultyAdjustedInterval = Math.max(300, baseSpawnInterval / difficultyMultiplier)
+      const baseSpawnInterval = Math.max(1000, 5000 - (state.level - 1) * 200)
+      const difficultyAdjustedInterval = Math.max(800, baseSpawnInterval / difficultyMultiplier)
       
       if (now2 - state.lastSpiderSpawnTime > difficultyAdjustedInterval) {
-        // Max spiders scaled by both level and difficulty
-        const baseMathSpiders = Math.min(15, 2 + Math.floor(state.level * 1.5))
+        // Max spiders scaled by both level and difficulty (reduced spider count)
+        const baseMathSpiders = Math.min(8, 1 + Math.floor(state.level * 0.8))
         const maxSpiders = Math.floor(baseMathSpiders * difficultyMultiplier)
         
         // Only spawn if fewer than max spiders for current level
@@ -3563,10 +3567,10 @@ export default function MolochGame() {
           const spiderX = Math.random() * (GAME_WIDTH - SPIDER_SIZE * 2) + SPIDER_SIZE
           const spiderY = BORDER_WIDTH
           
-          // Create spider with difficulty-scaled speed
+          // Create spider with difficulty-scaled speed (reduced base speed)
           const spider = new Spider(
             { x: spiderX, y: spiderY },
-            2.0 * difficultyMultiplier, // Speed scales with difficulty
+            1.5 * difficultyMultiplier, // Speed scales with difficulty (reduced from 2.0)
             SPIDER_SIZE
           )
           state.spiders.push(spider)
