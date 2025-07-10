@@ -25,11 +25,11 @@ function checkRateLimit(address: string): boolean {
 // Clean up old entries every 5 minutes
 setInterval(() => {
   const now = Date.now()
-  for (const [address, timestamp] of rateLimitMap.entries()) {
+  rateLimitMap.forEach((timestamp, address) => {
     if (now - timestamp > RATE_LIMIT_WINDOW * 5) {
       rateLimitMap.delete(address)
     }
-  }
+  })
 }, 5 * 60 * 1000)
 
 export async function POST(request: NextRequest) {
