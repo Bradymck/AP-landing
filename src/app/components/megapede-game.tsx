@@ -4474,6 +4474,26 @@ export default function MolochGame() {
               <div className="text-sm font-mono">
                 <div className="text-yellow-400">SCORE: {score}</div>
                 <div className="text-cyan-400">LEVEL: {level}</div>
+                {(() => {
+                  const state = gameStateRef.current
+                  const sessionDuration = Date.now() - state.sessionStartTime
+                  const remainingTime = Math.max(0, state.sessionTimeLimit - sessionDuration)
+                  const minutes = Math.floor(remainingTime / 60000)
+                  const seconds = Math.floor((remainingTime % 60000) / 1000)
+                  
+                  // Show timer when under 2 minutes remaining or time pressure is active
+                  if (remainingTime < 120000 || state.timePressureActive) {
+                    const isUrgent = remainingTime < 60000 || state.timePressureActive
+                    const colorClass = isUrgent ? 'text-red-400 animate-pulse' : 'text-orange-400'
+                    
+                    return (
+                      <div className={`${colorClass} font-bold`}>
+                        {state.timePressureActive ? 'OVERTIME!' : `TIME: ${minutes}:${seconds.toString().padStart(2, '0')}`}
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             </div>
             
