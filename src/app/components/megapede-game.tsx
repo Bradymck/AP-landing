@@ -1495,6 +1495,11 @@ export default function MolochGame() {
     lastKeyResetTime: 0, // Track time for stuck key detection
     lastCentipedeKillTime: 0, // Track when last centipede segment was killed
     antiFarmingActive: false, // Flag for anti-farming mode
+    sessionStartTime: 0, // Track when game session started
+    sessionTimeLimit: 300000, // 5 minutes session limit (300 seconds)
+    sessionWarningGiven: false, // Track if warning has been given
+    timePressureActive: false, // Flag for time pressure mode
+    lastTimePressureSpawn: 0, // Track time pressure spider spawns
     shockwaveEffect: null as {
       x: number;
       y: number;
@@ -1751,6 +1756,10 @@ export default function MolochGame() {
     state.lastSpiderSpawnTime = Date.now()
     state.lastCentipedeKillTime = Date.now() // Initialize anti-farming timer
     state.antiFarmingActive = false // Reset anti-farming state
+    state.sessionStartTime = Date.now() // Initialize session timer
+    state.sessionWarningGiven = false // Reset session warning
+    state.timePressureActive = false // Reset time pressure
+    state.lastTimePressureSpawn = Date.now() // Reset time pressure spawn timer
     
     // Choose a random emoji for this level's Moloch centipede and update global variables
     state.levelEmoji = EMOJI_HEADS[Math.floor(Math.random() * EMOJI_HEADS.length)]
@@ -3677,6 +3686,60 @@ export default function MolochGame() {
         }
       }
       
+      // Session Time Pressure: Spawn aggressive spiders if session goes too long
+      const sessionDuration = now3 - state.sessionStartTime
+      const warningTime = state.sessionTimeLimit * 0.8 // Warning at 80% of time limit (4 minutes)
+      
+      // Give warning at 4 minutes
+      if (sessionDuration > warningTime && !state.sessionWarningGiven) {
+        state.sessionWarningGiven = true
+        console.log(`⏰ Session time warning! 1 minute remaining - spiders incoming soon...`)
+        
+        // Play warning sound if available
+        if (soundManager) {
+          soundManager.play('energy-activate') // Reuse existing warning sound
+        }
+      }
+      
+      // Activate time pressure at 5 minutes
+      if (sessionDuration > state.sessionTimeLimit && !state.timePressureActive) {
+        state.timePressureActive = true
+        console.log(`🚨 SESSION TIME LIMIT EXCEEDED! Spawning spider waves...`)
+        
+        // Play urgent sound
+        if (soundManager) {
+          soundManager.play('enemy-hit') // Urgent sound
+        }
+      }
+      
+      // When time pressure is active, spawn spider waves
+      if (state.timePressureActive) {
+        // Calculate escalating spawn rate (gets faster over time)
+        const overtimeSeconds = Math.floor((sessionDuration - state.sessionTimeLimit) / 1000)
+        const spawnInterval = Math.max(100, 500 - overtimeSeconds * 10) // Starts at 500ms, gets faster
+        
+        if (now3 - state.lastTimePressureSpawn > spawnInterval) {
+          // Spawn multiple spiders in waves
+          const spidersToSpawn = Math.min(5, 2 + Math.floor(overtimeSeconds / 10)) // Start with 2, max 5
+          
+          for (let i = 0; i < spidersToSpawn; i++) {
+            const spiderX = Math.random() * (GAME_WIDTH - SPIDER_SIZE * 2) + SPIDER_SIZE
+            const spiderY = BORDER_WIDTH
+            
+            // Create super fast time pressure spiders
+            const spider = new Spider(
+              { x: spiderX, y: spiderY },
+              4.0 + (overtimeSeconds * 0.1), // Gets faster over time
+              SPIDER_SIZE
+            )
+            state.spiders.push(spider)
+          }
+          
+          state.lastTimePressureSpawn = now3
+          console.log(`🕷️ Spawned ${spidersToSpawn} time pressure spiders! (${overtimeSeconds}s overtime)`)
+        }
+      }
+
       // Reset anti-farming when all centipedes are dead
       if (totalCentipedeSegments === 0 && state.antiFarmingActive) {
         state.antiFarmingActive = false
