@@ -4144,12 +4144,18 @@ export default function MolochGame() {
                '🔥 Burn 1 ARI Token'}
             </button>
             
-            <div>
+            <div className="flex flex-col gap-2">
               <button
                 onClick={() => logout()}
                 className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full text-sm"
               >
                 Disconnect
+              </button>
+              <button
+                onClick={() => setGamePhase('leaderboard')}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full text-sm"
+              >
+                🏆 View Leaderboard
               </button>
             </div>
           </div>
@@ -4170,12 +4176,20 @@ export default function MolochGame() {
             <p className="text-sm text-yellow-400 mb-6">
               Your high score will be submitted automatically when the game ends!
             </p>
-            <button
-              onClick={startGame}
-              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all"
-            >
-              🚀 Start Game
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={startGame}
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all"
+              >
+                🚀 Start Game
+              </button>
+              <button
+                onClick={() => setGamePhase('leaderboard')}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full text-sm"
+              >
+                🏆 View Leaderboard
+              </button>
+            </div>
           </div>
         </div>
       )}

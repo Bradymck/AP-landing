@@ -43,7 +43,8 @@
       "mcp__supabase__query",
       "Bash(npx tsc:*)",
       "Bash(git branch:*)",
-      "Bash(npx supabase migration:*)"
+      "Bash(npx supabase migration:*)",
+      "Bash(awk:*)"
     ],
     "deny": []
   }
