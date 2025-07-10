@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { useWriteContract, useWaitForTransactionReceipt, useReadContract, useChainId, useSwitchChain, useAccount } from 'wagmi'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 import { parseEther, parseUnits } from 'viem'
 import { base } from 'wagmi/chains'
+import PrivyConnectWallet from './PrivyConnectWallet'
 
 // ARI Token Contract Details (from .env)
 const ARI_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_TOKEN_TO_BURN_ADDRESS as `0x${string}` || '0xDd33A2644D72324fE453036c78296AC90AEd2E2f'
@@ -3852,7 +3853,7 @@ export default function MolochGame() {
   }, [gameStarted, score, level, levelIntro])
 
   // Function to handle window resizing and responsive canvas
-  const handleResize = () => {
+  const handleResize = useCallback(() => {
     const canvas = canvasRef.current
     const container = gameContainerRef.current
     if (!canvas || !container) return
@@ -3904,8 +3905,9 @@ export default function MolochGame() {
     
     // Update mobile state
     setIsMobile(isMobileDevice)
-    setShowControls(isMobileDevice)
-  }
+    // Only show controls if mobile AND in playing phase
+    setShowControls(isMobileDevice && gamePhase === 'playing')
+  }, [gamePhase])
 
   useEffect(() => {
     // Only set up resize handler if running in browser
@@ -4094,6 +4096,13 @@ export default function MolochGame() {
     }
   }, [finalAddress])
   
+  // Reset controls when leaving playing phase
+  useEffect(() => {
+    if (gamePhase !== 'playing') {
+      setShowControls(false)
+    }
+  }, [gamePhase])
+  
   // Don't auto-start game since it's embedded in 404 page
   // User needs to manually start the game
 
@@ -4141,8 +4150,18 @@ export default function MolochGame() {
 
       {gamePhase === 'burn' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 via-orange-900 to-black bg-opacity-95 z-30">
-          <div className="text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-80 rounded-xl border border-orange-500">
-            <h2 className="text-3xl font-bold mb-4 text-orange-400">🔥 Burn ARI Tokens</h2>
+          <div className="relative text-center text-white max-w-md mx-auto p-8 bg-gray-800 bg-opacity-80 rounded-xl border border-orange-500">
+            {/* Header Section with proper spacing */}
+            <div className="mb-6">
+              {/* Wallet Button - Top right corner */}
+              <div className="absolute top-4 right-4">
+                <PrivyConnectWallet />
+              </div>
+              {/* Title - Centered with proper spacing from wallet button */}
+              <div className="pt-12">
+                <h2 className="text-3xl font-bold text-orange-400">🔥 Burn ARI Tokens</h2>
+              </div>
+            </div>
             
             {/* Pot Value & Difficulty Display */}
             <div className="bg-gray-900 border border-green-500 rounded-lg p-3 mb-4">
@@ -4165,30 +4184,14 @@ export default function MolochGame() {
                       tokenInfo?.symbol || 'tokens'
                     )}
                   </p>
-                  <p className="text-xs text-gray-400">
-                    {tokenInfo?.dexScreenerUrl ? (
-                      <a 
-                        href={tokenInfo.dexScreenerUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-gray-300 underline cursor-pointer"
-                      >
-                        {tokenInfo.name || 'Unknown Token'} ↗
-                      </a>
-                    ) : (
-                      tokenInfo?.name || 'Unknown Token'
-                    )}
-                  </p>
                 </div>
               )}
               <p className="text-xs text-yellow-400">⚡ Difficulty: {difficultyMultiplier}x {difficultyMultiplier >= 3 ? '(EXTREME)' : difficultyMultiplier >= 2 ? '(HARD)' : difficultyMultiplier >= 1.5 ? '(MEDIUM)' : '(EASY)'}</p>
               <p className="text-xs text-gray-400">
-                {tokenInfo?.hasPrice && (faucetBalance * tokenPrice) >= 200 ? 'Higher pot = harder game, bigger rewards!' : 'Difficulty based on token quantity'}
+                {tokenInfo?.hasPrice && (faucetBalance * tokenPrice) >= 200 ? 'Higher pot = harder game, bigger rewards!' : <span>Difficulty based on token quantity/value in <a href="https://basescan.org/address/0x447b964389d9ff14ebc4ebc92920fd3a69badc76#asset-tokens" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:underline">the pool</a></span>}
               </p>
             </div>
             
-            <p className="text-xs text-gray-400 mb-2">Connected: {finalAddress?.slice(0, 6)}...{finalAddress?.slice(-4)}</p>
-            <p className="text-xs text-gray-400 mb-2">Current Chain: {chainId} {chainId === base.id ? '(Base ✅)' : '(Need Base)'}</p>
             <p className="text-sm text-yellow-400 mb-4">
               Balance: {ariBalance ? (Number(ariBalance) / 1e18).toFixed(2) : '0'} ARI
             </p>
@@ -4250,15 +4253,12 @@ export default function MolochGame() {
                '🔥 Burn 1 ARI Token'}
             </button>
             
-            <div className="flex flex-col gap-2">
+            <div className="flex justify-center">
               <button
-                onClick={() => logout()}
-                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-full text-sm"
-              >
-                Disconnect
-              </button>
-              <button
-                onClick={() => setGamePhase('leaderboard')}
+                onClick={() => {
+                  setGameStarted(false)
+                  setGamePhase('leaderboard')
+                }}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full text-sm"
               >
                 🏆 View Leaderboard
@@ -4290,7 +4290,10 @@ export default function MolochGame() {
                 🚀 Start Game
               </button>
               <button
-                onClick={() => setGamePhase('leaderboard')}
+                onClick={() => {
+                  setGameStarted(false)
+                  setGamePhase('leaderboard')
+                }}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full text-sm"
               >
                 🏆 View Leaderboard
@@ -4300,11 +4303,13 @@ export default function MolochGame() {
         </div>
       )}
       
-      <div className={`w-full ${isMobile ? '' : 'h-full'} flex justify-center ${isMobile ? 'items-start mt-4' : 'items-center pb-16'} relative`}>
-        <canvas
-          ref={canvasRef}
-          className="bg-black block"
-        />
+      <div className={`w-full ${isMobile ? '' : 'h-full'} flex justify-center ${isMobile ? 'items-start mt-4' : 'items-center'} relative`}>
+        {gamePhase !== 'leaderboard' && (
+          <canvas
+            ref={canvasRef}
+            className="bg-black block"
+          />
+        )}
         
         {/* Game Over screen overlay */}
         {gamePhase === 'gameover' && (
@@ -4360,112 +4365,123 @@ export default function MolochGame() {
           </div>
         )}
 
-        {/* Leaderboard screen */}
-        {gamePhase === 'leaderboard' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-yellow-900 via-green-900 to-black bg-opacity-95 z-10 overflow-y-auto">
-            <div className="text-center text-white max-w-2xl mx-auto p-8 bg-gray-800 bg-opacity-90 rounded-xl border border-yellow-500 m-4">
-              <h2 className="text-4xl font-bold mb-6 text-yellow-400">🏆 Leaderboard</h2>
-              
-              <div className="bg-gray-700 rounded-lg p-6 mb-6">
-                <h3 className="text-xl font-bold mb-4 text-green-400">Your Score: {gameStateRef.current.score}</h3>
-                {rewardSignature && (
-                  <div className="mb-4 p-4 bg-green-800 bg-opacity-50 rounded-lg border border-green-500">
-                    <p className="text-lg text-green-300 mb-2">🎁 Reward Available!</p>
-                    <p className="text-sm text-gray-300 mb-3">Amount: {rewardSignature.amount} Moonstone</p>
-                    {isClaimPending && (
-                      <p className="text-sm text-blue-400 mb-3">
-                        ⏳ Transaction pending... Please confirm in your wallet
-                      </p>
-                    )}
-                    
-                    {isClaimConfirming && (
-                      <p className="text-sm text-blue-400 mb-3">
-                        ⏳ Confirming transaction...
-                      </p>
-                    )}
-                    
-                    {claimError && (
-                      <p className="text-sm text-red-400 mb-3">
-                        ❌ Error: {claimError.message}
-                      </p>
-                    )}
-                    
-                    {claimTxHash && isClaimConfirmed && (
-                      <p className="text-sm text-green-400 mb-3">
-                        ✅ Claimed! Tx: {claimTxHash.slice(0, 10)}...
-                      </p>
-                    )}
-                    
-                    <button
-                      onClick={claimReward}
-                      disabled={hasClaimed || isClaimPending || isClaimConfirming}
-                      className="bg-gradient-to-r from-green-600 to-yellow-600 hover:from-green-700 hover:to-yellow-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all disabled:transform-none"
-                    >
-                      {isClaimPending ? '⏳ Confirming...' :
-                       isClaimConfirming ? '⏳ Processing...' :
-                       hasClaimed ? '✅ Claimed!' : '🌙 Claim Moonstone'}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-gray-700 rounded-lg p-4 mb-6 max-h-64 overflow-y-auto">
-                <h3 className="text-lg font-bold mb-4 text-cyan-400">🏅 Top Players</h3>
-                {leaderboard.length === 0 ? (
-                  <p className="text-gray-400">No scores yet. Be the first!</p>
-                ) : (
-                  <div className="space-y-2">
-                    {leaderboard.map((entry, index) => (
-                      <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
-                        entry.address === finalAddress ? 'bg-blue-600 bg-opacity-50 border border-blue-400' : 'bg-gray-600'
-                      }`}>
-                        <div className="flex items-center space-x-3">
-                          <span className="text-lg font-bold text-yellow-400">#{index + 1}</span>
-                          <span className="text-sm text-gray-300">{entry.address.slice(0, 6)}...{entry.address.slice(-4)}</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <span className="text-lg font-bold text-white">{entry.score}</span>
-                          {entry.address === finalAddress && (
-                            <span className="text-xs text-blue-300">YOU</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex space-x-4 justify-center">
-                <button
-                  onClick={() => {
-                    gameStateRef.current.score = 0;
-                    gameStateRef.current.level = 1;
-                    gameStateRef.current.gameOver = false; // Critical: Reset gameStateRef gameOver flag
-                    setScore(0);
-                    setLevel(1);
-                    setRewardSignature(null);
-                    setHasClaimed(false);
-                    setHasSubmittedScore(false);
-                    // Reset burn status - require new burn for next game
-                    setHasBurnedTokens(false);
-                    setBurnTransaction(null);
-                    setGamePhase('burn');
-                    setGameOver(false);
-                  }}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all"
-                >
-                  🔥 Burn ARI & Play Again
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         
         {/* Score and level are now drawn directly on the canvas */}
       </div>
       
+      {/* Leaderboard screen */}
+      {gamePhase === 'leaderboard' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-yellow-900 via-green-900 to-black bg-opacity-95 z-10 overflow-y-auto">
+          <div className="relative text-center text-white max-w-2xl mx-auto p-8 bg-gray-800 bg-opacity-90 rounded-xl border border-yellow-500 m-4">
+            {/* Header Section with proper spacing */}
+            <div className="mb-6">
+              {/* Wallet Button - Top right corner */}
+              <div className="absolute top-4 right-4">
+                <PrivyConnectWallet />
+              </div>
+              {/* Title - Centered with proper spacing from wallet button */}
+              <div className="pt-12">
+                <h2 className="text-4xl font-bold text-yellow-400">🏆 Leaderboard</h2>
+              </div>
+            </div>
+            
+            <div className="bg-gray-700 rounded-lg p-6 mb-6">
+              <h3 className="text-xl font-bold mb-4 text-green-400">Your Score: {gameStateRef.current.score}</h3>
+              {rewardSignature && (
+                <div className="mb-4 p-4 bg-green-800 bg-opacity-50 rounded-lg border border-green-500">
+                  <p className="text-lg text-green-300 mb-2">🎁 Reward Available!</p>
+                  <p className="text-sm text-gray-300 mb-3">Amount: {rewardSignature.amount} Moonstone</p>
+                  {isClaimPending && (
+                    <p className="text-sm text-blue-400 mb-3">
+                      ⏳ Transaction pending... Please confirm in your wallet
+                    </p>
+                  )}
+                  
+                  {isClaimConfirming && (
+                    <p className="text-sm text-blue-400 mb-3">
+                      ⏳ Confirming transaction...
+                    </p>
+                  )}
+                  
+                  {claimError && (
+                    <p className="text-sm text-red-400 mb-3">
+                      ❌ Error: {claimError.message}
+                    </p>
+                  )}
+                  
+                  {claimTxHash && isClaimConfirmed && (
+                    <p className="text-sm text-green-400 mb-3">
+                      ✅ Claimed! Tx: {claimTxHash.slice(0, 10)}...
+                    </p>
+                  )}
+                  
+                  <button
+                    onClick={claimReward}
+                    disabled={hasClaimed || isClaimPending || isClaimConfirming}
+                    className="bg-gradient-to-r from-green-600 to-yellow-600 hover:from-green-700 hover:to-yellow-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all disabled:transform-none"
+                  >
+                    {isClaimPending ? '⏳ Confirming...' :
+                     isClaimConfirming ? '⏳ Processing...' :
+                     hasClaimed ? '✅ Claimed!' : '🌙 Claim Moonstone'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gray-700 rounded-lg p-4 mb-6 max-h-64 overflow-y-auto">
+              <h3 className="text-lg font-bold mb-4 text-cyan-400">🏅 Top Players</h3>
+              {leaderboard.length === 0 ? (
+                <p className="text-gray-400">No scores yet. Be the first!</p>
+              ) : (
+                <div className="space-y-2">
+                  {leaderboard.map((entry, index) => (
+                    <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
+                      entry.address === finalAddress ? 'bg-blue-600 bg-opacity-50 border border-blue-400' : 'bg-gray-600'
+                    }`}>
+                      <div className="flex items-center space-x-3">
+                        <span className="text-lg font-bold text-yellow-400">#{index + 1}</span>
+                        <span className="text-sm text-gray-300">{entry.address.slice(0, 6)}...{entry.address.slice(-4)}</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className="text-lg font-bold text-white">{entry.score}</span>
+                        {entry.address === finalAddress && (
+                          <span className="text-xs text-blue-300">YOU</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex space-x-4 justify-center">
+              <button
+                onClick={() => {
+                  gameStateRef.current.score = 0;
+                  gameStateRef.current.level = 1;
+                  setScore(0);
+                  setLevel(1);
+                  setGamePhase('burn');
+                  setGameOver(false);
+                  setGameStarted(false);
+                  setHasSubmittedScore(false);
+                  setRewardSignature(null);
+                  setHasClaimed(false);
+                  // Reset burn status to require new burn
+                  setHasBurnedTokens(false);
+                  setBurnTransaction(null);
+                }}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all"
+              >
+                🔥 Burn ARI & Play Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Game Boy Style Bottom UI Bar */}
-      {gameStarted && (
+      {gameStarted && gamePhase === 'playing' && (
         <div className="absolute bottom-0 left-0 right-0 bg-black border-t-2 border-cyan-400 z-30">
           {/* Main UI Bar */}
           <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-gray-900 to-gray-800">
@@ -4565,7 +4581,7 @@ export default function MolochGame() {
       )}
       
       {/* Game Controls - Mobile only */}
-      {gamePhase === 'playing' && isMobile && (
+      {gamePhase === 'playing' && isMobile && showControls && (
         <div className="absolute bottom-12 left-0 right-0 bg-gray-800 border-t-2 border-gray-600 z-20">
           {/* Controls toggle button */}
           <div className="flex justify-center mb-4 relative">

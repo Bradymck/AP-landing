@@ -44,7 +44,14 @@
       "Bash(npx tsc:*)",
       "Bash(git branch:*)",
       "Bash(npx supabase migration:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(supabase init:*)",
+      "Bash(supabase start:*)",
+      "Bash(supabase status:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase migration:*)",
+      "Bash(kill:*)",
+      "Bash(./start-dev.sh:*)"
     ],
     "deny": []
   }

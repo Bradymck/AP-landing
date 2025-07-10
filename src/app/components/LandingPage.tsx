@@ -5,9 +5,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Gamepad2, ExternalLink, MessageSquare, Code, CuboidIcon as Cube, X, MapPin, Trophy } from 'lucide-react'
+import { Gamepad2, ExternalLink, MessageSquare, Code, CuboidIcon as Cube, X, MapPin } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import PrivyConnectWallet from "./PrivyConnectWallet"
 
 const Twitter = dynamic(() => import('lucide-react').then(mod => mod.Twitter), {
   loading: () => <div className="w-6 h-6 bg-purple-300/20 rounded animate-pulse" />,
@@ -107,12 +106,14 @@ export default function LandingPage() {
                 Tokens
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 group-hover:w-full transition-all duration-300"></span>
               </Link>
-              <Link href="/game" className="text-white text-shadow-glow hover:text-purple-300 transition-colors relative group flex items-center gap-1">
-                <Trophy className="w-4 h-4" />
-                Leaderboard
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 group-hover:w-full transition-all duration-300"></span>
+              <Link 
+                href="#" 
+                
+                
+                className="bg-gray-600 cursor-not-allowed text-gray-300 px-4 py-2 rounded-lg font-semibold opacity-70"
+              >
+                Coming Soon
               </Link>
-              <PrivyConnectWallet />
             </nav>
           </div>
 
@@ -131,13 +132,15 @@ export default function LandingPage() {
               <Link href="#tokens" className="block px-4 py-2 text-white hover:bg-purple-800/50 rounded transition-colors" onClick={() => setIsMenuOpen(false)}>
                 Tokens
               </Link>
-              <Link href="/game" className="block px-4 py-2 text-white hover:bg-purple-800/50 rounded transition-colors flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
-                <Trophy className="w-4 h-4" />
-                Leaderboard
+              <Link 
+                href="https://discord.gg/aquaprime" 
+                
+                
+                className="block mx-4 mt-4 bg-gray-600 cursor-not-allowed text-gray-300 px-4 py-2 rounded-lg font-semibold opacity-70 text-center"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Coming Soon
               </Link>
-              <div className="mx-4 mt-4">
-                <PrivyConnectWallet />
-              </div>
             </div>
           )}
         </div>
@@ -182,20 +185,19 @@ export default function LandingPage() {
               Satire & Evil memes👹 | Tabletop Inspired🎲 | Web3 Infused🔑
             </p>
             <div className="flex gap-4 justify-center">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <PrivyConnectWallet />
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  className="border-purple-400 bg-purple-800/50 text-white hover:bg-purple-800 text-shadow-glow flex items-center gap-2"
-                  asChild
+              <Button 
+                size="lg" 
+                className="bg-gray-600 cursor-not-allowed text-gray-300 opacity-70 pointer-events-none"
+                asChild
+              >
+                <Link 
+                  href="#"
+                  
+                  
                 >
-                  <Link href="/game">
-                    <Trophy className="w-4 h-4" />
-                    View Leaderboard
-                  </Link>
-                </Button>
-              </div>
+                  Coming Soon <ExternalLink className="w-4 h-4 ml-2" />
+                </Link>
+              </Button>
               <Button 
                 size="lg" 
                 variant="outline" 
