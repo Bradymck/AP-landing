@@ -565,6 +565,7 @@ const BASIC_PARTICLE_COUNT = 4 // Basic particles for simple effects
 const BULLET_RADIUS = 6 // Larger hit radius for bullets
 const MUSHROOM_FALL_CHANCE = 0.01 // Chance for a mushroom to start falling each frame
 const MUSHROOM_FALL_SPEED = 1 // Speed at which mushrooms fall
+const MAX_SCORE = 100000 // Maximum score before auto-reset
 
 // Egg colors for the mushroom blocks
 const EGG_COLORS = [
@@ -1536,6 +1537,28 @@ export default function MolochGame() {
     }
   }
 
+  // Helper function to safely add points with 100k cap
+  const addScore = (points: number) => {
+    const state = gameStateRef.current
+    const newScore = state.score + points
+    
+    if (newScore >= MAX_SCORE) {
+      // Reset score and increment level when hitting 100k
+      state.score = 0
+      state.level += 1
+      CURRENT_GAME_LEVEL = state.level
+      
+      // Reset leaderboard when max score reached
+      fetchLeaderboard()
+    } else {
+      state.score = newScore
+    }
+    
+    // Update React state
+    setScore(state.score)
+    setLevel(state.level)
+  }
+
   // Create blood splat when centipede head dies
   const createBloodSplat = (position: Vector2) => {
     const state = gameStateRef.current
@@ -2293,7 +2316,7 @@ export default function MolochGame() {
                 soundManager.play('enemy-hit')
               }
               // Award points for shockwave kills
-              state.score += segment.isHead ? 100 : 50
+              addScore(segment.isHead ? 100 : 50)
               enemiesHit++
             }
           }
@@ -2317,7 +2340,7 @@ export default function MolochGame() {
             if (soundManager) {
               soundManager.play('enemy-hit')
             }
-            state.score += 300
+            addScore(300)
             state.spiderKillCount++
             enemiesHit++
           }
@@ -2639,7 +2662,7 @@ export default function MolochGame() {
                 mushroom.sections[i] = false
                 mushroom.health--
                 createMushroomParticles(mushroom.position, i, mushroom.colorSet)
-                state.score += 1
+                addScore(1)
                 
                 // Play block destroy sound at lower volume
                 if (soundManager) {
@@ -2795,7 +2818,7 @@ export default function MolochGame() {
                   // Remove from obstacle grid
                   const key = `${Math.floor(mushroom.position.x / GRID_SIZE)},${Math.floor(mushroom.position.y / GRID_SIZE)}`
                   state.obstacleGrid.delete(key)
-                  state.score += 10
+                  addScore(10)
                 }
 
                 // Break out of the loop once we've hit a section
@@ -2890,7 +2913,7 @@ export default function MolochGame() {
                   chain.segments = chain.segments.filter((s) => s.isAlive)
 
                   // Increase score
-                  state.score += 150
+                  addScore(150)
                   state.player.killCount += 2
                 }
                 // Regular body segment handling
@@ -2935,7 +2958,7 @@ export default function MolochGame() {
                     }
 
                     // Give some points for hitting armor
-                    state.score += 25
+                    addScore(25)
                   }
 
                   if (damageResult.destroyed) {
@@ -2963,7 +2986,7 @@ export default function MolochGame() {
                     }
 
                     // Increase score and player kill count
-                    state.score += 100
+                    addScore(100)
                     state.player.killCount++
                   }
                 }
@@ -2997,7 +3020,7 @@ export default function MolochGame() {
           ) {
             bullet.active = false
             spider.isAlive = false
-            state.score += 300
+            addScore(300)
             state.player.killCount += 2 // Spiders count more toward energizing
             state.spiderKillCount += 1 // Track spider kills for power-up spawning
             
@@ -3537,7 +3560,7 @@ export default function MolochGame() {
             } else {
               // When energized, destroy the segment instead
               segment.isAlive = false
-              state.score += 200
+              addScore(200)
             }
           }
         })
@@ -3665,7 +3688,7 @@ export default function MolochGame() {
             } else {
               // When energized, destroy the spider instead
               spider.isAlive = false
-              state.score += 300
+              addScore(300)
               state.spiderKillCount += 1 // Track spider kills for power-up spawning
             }
           }

@@ -6,12 +6,64 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+// Rate limiting: 1 submission per minute per address
+const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute in milliseconds
+const rateLimitMap = new Map<string, number>()
+
+function checkRateLimit(address: string): boolean {
+  const now = Date.now()
+  const lastSubmission = rateLimitMap.get(address)
+  
+  if (lastSubmission && now - lastSubmission < RATE_LIMIT_WINDOW) {
+    return false // Rate limited
+  }
+  
+  rateLimitMap.set(address, now)
+  return true // Allow submission
+}
+
+// Clean up old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now()
+  for (const [address, timestamp] of rateLimitMap.entries()) {
+    if (now - timestamp > RATE_LIMIT_WINDOW * 5) {
+      rateLimitMap.delete(address)
+    }
+  }
+}, 5 * 60 * 1000)
+
 export async function POST(request: NextRequest) {
   try {
     const { address, score } = await request.json()
     
     if (!address || !score) {
       return NextResponse.json({ error: 'Address and score are required' }, { status: 400 })
+    }
+
+    // Check rate limit
+    if (!checkRateLimit(address)) {
+      return NextResponse.json({ 
+        error: 'Rate limit exceeded. Please wait 1 minute between score submissions.' 
+      }, { status: 429 })
+    }
+
+    // Basic sanity checks for score
+    if (score > 100000) {
+      return NextResponse.json({ 
+        error: 'Score exceeds maximum allowed value (100,000)' 
+      }, { status: 400 })
+    }
+
+    if (score < 0) {
+      return NextResponse.json({ 
+        error: 'Invalid score value' 
+      }, { status: 400 })
+    }
+
+    // Check for suspiciously high scores that might indicate cheating
+    // These values are based on typical gameplay patterns
+    if (score > 50000) {
+      console.log('🚨 High score detected - potential cheating:', { address, score })
     }
 
     console.log('Saving score to Supabase:', { address, score })
