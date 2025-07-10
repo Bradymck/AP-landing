@@ -13,6 +13,24 @@ body {
   background: rgb(var(--background-start-rgb));
 }
 
+/* Safe area support for mobile devices with notches */
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+/* Ensure proper viewport meta tag is used */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-top: max(env(safe-area-inset-top), 0px);
+    padding-right: max(env(safe-area-inset-right), 0px);
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+    padding-left: max(env(safe-area-inset-left), 0px);
+  }
+}
+
 .text-shadow-glow {
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }

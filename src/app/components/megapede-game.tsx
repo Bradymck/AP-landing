@@ -688,7 +688,7 @@ class MolochSegment {
 
       // Continue moving horizontally at the bottom
       const nextX = this.position.x + this.direction * this.stepSize
-      const hitsBoundary = nextX < BORDER_WIDTH || nextX >= gridWidth - BORDER_WIDTH - this.size
+      const hitsBoundary = nextX <= BORDER_WIDTH || nextX >= gridWidth - BORDER_WIDTH - this.size
 
       if (hitsBoundary) {
         this.direction *= -1 // Reverse horizontal direction at boundaries
@@ -703,7 +703,7 @@ class MolochSegment {
     } else {
       const nextX = this.position.x + this.direction * this.stepSize
       const key = `${Math.floor(nextX / GRID_SIZE)},${Math.floor(this.position.y / GRID_SIZE)}`
-      const hitsBoundary = nextX < BORDER_WIDTH || nextX >= gridWidth - BORDER_WIDTH - this.size
+      const hitsBoundary = nextX <= BORDER_WIDTH || nextX >= gridWidth - BORDER_WIDTH - this.size
       const hitsObstacle = obstacles.has(key)
 
       if (hitsBoundary || hitsObstacle) {
@@ -1655,8 +1655,28 @@ export default function MolochGame() {
     const bonusSegments = Math.floor((state.level - 1) / 2) // One extra segment every 2 levels
     const segmentCount = BASE_SEGMENT_COUNT + bonusSegments
     
-    const startX = Math.random() > 0.5 ? BORDER_WIDTH : GAME_WIDTH - BORDER_WIDTH - SEGMENT_SIZE
-    const direction = startX === BORDER_WIDTH ? 1 : -1
+    // Calculate playable area boundaries
+    const playableWidth = GAME_WIDTH - (BORDER_WIDTH * 2)
+    const minSpawnX = BORDER_WIDTH
+    const maxSpawnX = GAME_WIDTH - BORDER_WIDTH - SEGMENT_SIZE
+    
+    // Ensure entire centipede chain fits within bounds
+    const chainLength = segmentCount * SEGMENT_SIZE
+    const safeMaxX = Math.max(minSpawnX, maxSpawnX - chainLength)
+    const safeMinX = Math.min(maxSpawnX, minSpawnX + chainLength)
+    
+    // Spawn on left or right side, but ensure chain fits
+    let startX, direction
+    if (Math.random() > 0.5) {
+      // Spawn on left side, moving right
+      startX = minSpawnX
+      direction = 1
+    } else {
+      // Spawn on right side, moving left
+      startX = safeMaxX
+      direction = -1
+    }
+    
     const startY = SEGMENT_SIZE + BORDER_WIDTH
 
     // Create the Moloch centipede chain
@@ -3531,7 +3551,30 @@ export default function MolochGame() {
 
       // Update Moloch centipede chains
       state.molochChains.forEach((chain) => {
-        chain.update(GAME_WIDTH, GAME_HEIGHT, state.obstacleGrid)
+        // Use playable area dimensions (excluding borders)
+        const playableWidth = GAME_WIDTH
+        const playableHeight = GAME_HEIGHT - BOTTOM_BORDER_WIDTH
+        
+        // Fix any segments that are outside bounds (emergency correction)
+        chain.segments.forEach((segment) => {
+          if (segment.isAlive) {
+            // Ensure segment is within horizontal bounds
+            if (segment.position.x < BORDER_WIDTH) {
+              segment.position.x = BORDER_WIDTH
+            } else if (segment.position.x > GAME_WIDTH - BORDER_WIDTH - SEGMENT_SIZE) {
+              segment.position.x = GAME_WIDTH - BORDER_WIDTH - SEGMENT_SIZE
+            }
+            
+            // Ensure segment is within vertical bounds
+            if (segment.position.y < BORDER_WIDTH) {
+              segment.position.y = BORDER_WIDTH
+            } else if (segment.position.y > GAME_HEIGHT - BOTTOM_BORDER_WIDTH - SEGMENT_SIZE) {
+              segment.position.y = GAME_HEIGHT - BOTTOM_BORDER_WIDTH - SEGMENT_SIZE
+            }
+          }
+        })
+        
+        chain.update(playableWidth, playableHeight, state.obstacleGrid)
 
         // Check if any segment reaches bottom or collides with player
         // Filter to only alive segments to prevent ghost collisions
