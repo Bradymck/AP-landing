@@ -3920,7 +3920,14 @@ export default function MolochGame() {
     setTimeout(handleResize, 100)
     
     return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  }, [handleResize])
+
+  // Ensure controls are shown when game phase changes to playing on mobile
+  useEffect(() => {
+    if (gamePhase === 'playing' && isMobile) {
+      setShowControls(true)
+    }
+  }, [gamePhase, isMobile])
 
   const handleStartGame = async () => {
     // Enable audio on user interaction
