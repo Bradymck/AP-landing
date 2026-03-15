@@ -68,119 +68,99 @@ export default function MapPage() {
         }}
       />
 
-      {/* PC screen + code entry */}
+      {/* Code entry */}
       <div
-        style={{ position: "relative", zIndex: 10, width: "min(560px, 88vw)" }}
+        style={{
+          position: "relative",
+          zIndex: 10,
+          width: "min(340px, 88vw)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "12px",
+        }}
       >
-        {/* Title above the screen */}
-        <div style={{ textAlign: "center", marginBottom: "12px" }}>
-          <span
+        <span
+          style={{
+            color: "#00ffff",
+            fontSize: "11px",
+            letterSpacing: "6px",
+            textTransform: "uppercase",
+            textShadow: "0 0 12px #00ffff",
+          }}
+        >
+          THE GRID IS LIVE
+        </span>
+
+        <p
+          style={{
+            color: "#00ffff",
+            fontSize: "9px",
+            letterSpacing: "3px",
+            margin: 0,
+            textShadow: "0 0 8px #00ffff",
+          }}
+        >
+          ROOM CODE
+        </p>
+        <input
+          autoFocus
+          value={input}
+          onChange={(e) =>
+            setInput(
+              e.target.value
+                .toUpperCase()
+                .replace(/[^A-Z0-9]/g, "")
+                .slice(0, 6),
+            )
+          }
+          onKeyDown={(e) => e.key === "Enter" && enter()}
+          placeholder="— — — — — —"
+          maxLength={6}
+          style={{
+            width: "100%",
+            background: "rgba(0, 0, 0, 0.75)",
+            border: "1px solid #00ffff",
+            color: "#00ffff",
+            fontFamily: "monospace",
+            fontSize: "22px",
+            textAlign: "center",
+            letterSpacing: "8px",
+            padding: "10px 12px",
+            outline: "none",
+            boxShadow: "0 0 10px rgba(0,255,255,0.3) inset",
+          }}
+        />
+        {error && (
+          <p
             style={{
-              color: "#00ffff",
-              fontSize: "11px",
-              letterSpacing: "6px",
-              textTransform: "uppercase",
-              textShadow: "0 0 12px #00ffff",
+              color: "#ff4444",
+              fontSize: "9px",
+              margin: 0,
+              letterSpacing: "2px",
             }}
           >
-            THE GRID IS LIVE
-          </span>
-        </div>
-
-        {/* PC image */}
-        <div style={{ position: "relative" }}>
-          <img
-            src="https://www.platypuspassions.com/assets/branding/pc.webp"
-            alt="Terminal"
-            style={{ width: "100%", display: "block" }}
-          />
-
-          {/* Input overlay — positioned on the monitor screen area */}
-          <div
-            style={{
-              position: "absolute",
-              top: "33%",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "52%",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <p
-              style={{
-                color: "#00ffff",
-                fontSize: "9px",
-                letterSpacing: "3px",
-                margin: 0,
-                textShadow: "0 0 8px #00ffff",
-              }}
-            >
-              ROOM CODE
-            </p>
-            <input
-              autoFocus
-              value={input}
-              onChange={(e) =>
-                setInput(
-                  e.target.value
-                    .toUpperCase()
-                    .replace(/[^A-Z0-9]/g, "")
-                    .slice(0, 6),
-                )
-              }
-              onKeyDown={(e) => e.key === "Enter" && enter()}
-              placeholder="— — — — — —"
-              maxLength={6}
-              style={{
-                width: "100%",
-                background: "rgba(0, 0, 0, 0.75)",
-                border: "1px solid #00ffff",
-                color: "#00ffff",
-                fontFamily: "monospace",
-                fontSize: "18px",
-                textAlign: "center",
-                letterSpacing: "6px",
-                padding: "5px 8px",
-                outline: "none",
-                boxShadow: "0 0 10px rgba(0,255,255,0.3) inset",
-              }}
-            />
-            {error && (
-              <p
-                style={{
-                  color: "#ff4444",
-                  fontSize: "9px",
-                  margin: 0,
-                  letterSpacing: "2px",
-                }}
-              >
-                {error}
-              </p>
-            )}
-            <button
-              onClick={enter}
-              style={{
-                width: "100%",
-                background:
-                  input.length === 6 ? "#00ffff" : "rgba(0,255,255,0.15)",
-                color: input.length === 6 ? "#000" : "#00ffff",
-                fontFamily: "monospace",
-                fontWeight: "bold",
-                fontSize: "10px",
-                letterSpacing: "3px",
-                padding: "6px",
-                border: "1px solid #00ffff",
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-            >
-              ACCESS
-            </button>
-          </div>
-        </div>
+            {error}
+          </p>
+        )}
+        <button
+          onClick={enter}
+          style={{
+            width: "100%",
+            background: input.length === 6 ? "#00ffff" : "rgba(0,255,255,0.15)",
+            color: input.length === 6 ? "#000" : "#00ffff",
+            fontFamily: "monospace",
+            fontWeight: "bold",
+            fontSize: "11px",
+            letterSpacing: "3px",
+            padding: "10px",
+            border: "1px solid #00ffff",
+            cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+        >
+          ACCESS
+        </button>
       </div>
     </div>
   );
