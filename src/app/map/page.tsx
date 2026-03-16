@@ -80,6 +80,14 @@ export default function MapPage() {
           gap: "12px",
         }}
       >
+        {/* Logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/bwlogo.png"
+          alt="AquaPrime"
+          style={{ width: "120px", opacity: 0.9, marginBottom: "4px" }}
+        />
+
         <span
           style={{
             color: "#00ffff",
