@@ -53,20 +53,34 @@ export default function MapPage() {
         fontFamily: "monospace",
       }}
     >
+      <style>{`
+        .fire-ari {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          height: 90vh;
+          max-width: 45vw;
+          object-fit: contain;
+          object-position: left bottom;
+          opacity: 0.92;
+          pointer-events: none;
+          user-select: none;
+        }
+        /* Portrait / mobile — shrink so it doesn't cover the input */
+        @media (max-aspect-ratio: 3/4) {
+          .fire-ari { height: 32vh; max-width: 38vw; opacity: 0.7; }
+        }
+        @media (min-aspect-ratio: 3/4) and (max-aspect-ratio: 1/1) {
+          .fire-ari { height: 50vh; max-width: 40vw; opacity: 0.8; }
+        }
+        @media (min-aspect-ratio: 1/1) and (max-width: 900px) {
+          .fire-ari { height: 65vh; max-width: 42vw; }
+        }
+      `}</style>
+
       {/* ARI / fire — left anchor */}
-      <img
-        src="/Fire_Transparent.gif"
-        alt=""
-        style={{
-          position: "absolute",
-          left: 0,
-          bottom: 0,
-          height: "90vh",
-          opacity: 0.92,
-          pointerEvents: "none",
-          userSelect: "none",
-        }}
-      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/Fire_Transparent.gif" alt="" className="fire-ari" />
 
       {/* Code entry */}
       <div
