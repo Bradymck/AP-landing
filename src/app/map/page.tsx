@@ -1,43 +1,254 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 const VALID_CODE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/i;
+const EMBED_ORIGIN = "https://www.platypuspassions.com";
+const READY_TIMEOUT_MS = 15_000;
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+type PageState = "entry" | "loading" | "active" | "error";
+
+// Future: extend with "planet" | "gallery" when new experiences ship
+type MapMode = "map";
+
+// ---------------------------------------------------------------------------
+// MapPage
+// ---------------------------------------------------------------------------
 export default function MapPage() {
   const [input, setInput] = useState("");
-  const [activeCode, setActiveCode] = useState("");
+  const [code, setCode] = useState("");
+  const [pageState, setPageState] = useState<PageState>("entry");
   const [error, setError] = useState("");
+  const [mode] = useState<MapMode>("map");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function enter() {
-    const code = input.trim().toUpperCase();
-    if (VALID_CODE.test(code)) {
-      setActiveCode(code);
+  // -- postMessage listener: wait for aquaprime:ready from iframe ----------
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.origin !== EMBED_ORIGIN) return;
+      if (e.data?.type === "aquaprime:ready") {
+        setPageState("active");
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+      }
+      // Future: handle aquaprime:tile-select here
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  // -- Timeout fallback: if ready never arrives ----------------------------
+  useEffect(() => {
+    if (pageState === "loading") {
+      timeoutRef.current = setTimeout(() => {
+        setPageState("error");
+        setError(
+          "Map took too long to load. Check your connection and try again.",
+        );
+      }, READY_TIMEOUT_MS);
+    }
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [pageState]);
+
+  const enter = useCallback(() => {
+    const trimmed = input.trim().toUpperCase();
+    if (VALID_CODE.test(trimmed)) {
+      setCode(trimmed);
       setError("");
+      setPageState("loading");
     } else {
       setError("Invalid code");
     }
-  }
+  }, [input]);
 
-  if (activeCode) {
+  const exit = useCallback(() => {
+    setPageState("entry");
+    setCode("");
+    setError("");
+  }, []);
+
+  const retry = useCallback(() => {
+    if (code) {
+      setError("");
+      setPageState("loading");
+    }
+  }, [code]);
+
+  // ── Active / Loading: show iframe ──────────────────────────────────────
+  if (pageState === "loading" || pageState === "active") {
+    const iframeSrc = `${EMBED_ORIGIN}/embed/map?room=${code}`;
+
     return (
-      <iframe
-        src={`https://www.platypuspassions.com/${activeCode}`}
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100vw",
-          height: "100vh",
-          border: "none",
-          display: "block",
-        }}
-        allow="autoplay; fullscreen; microphone"
-        allowFullScreen
-      />
+      <div style={{ position: "fixed", inset: 0, background: "#000" }}>
+        {/* Loading overlay — fades out when active */}
+        {pageState === "loading" && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 20,
+              background: "#000",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              fontFamily: "monospace",
+            }}
+          >
+            <div
+              style={{
+                width: 24,
+                height: 24,
+                border: "2px solid rgba(0,255,255,0.3)",
+                borderTopColor: "#00ffff",
+                borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+              }}
+            />
+            <span
+              style={{
+                color: "#00ffff",
+                fontSize: 11,
+                letterSpacing: 3,
+                textTransform: "uppercase",
+              }}
+            >
+              Connecting to grid...
+            </span>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
+
+        {/* The map iframe */}
+        <iframe
+          src={iframeSrc}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            border: "none",
+            display: "block",
+          }}
+          allow="autoplay; fullscreen; microphone"
+          allowFullScreen
+        />
+
+        {/* Exit button (top-left, always visible when active) */}
+        {pageState === "active" && (
+          <button
+            onClick={exit}
+            style={{
+              position: "absolute",
+              top: 12,
+              left: 12,
+              zIndex: 30,
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              background: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(6px)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              color: "#fff",
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: "monospace",
+              transition: "opacity 0.2s",
+              opacity: 0.5,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
+            title="Exit map"
+          >
+            &times;
+          </button>
+        )}
+      </div>
     );
   }
 
+  // ── Error state ────────────────────────────────────────────────────────
+  if (pageState === "error") {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "#000",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 16,
+          fontFamily: "monospace",
+        }}
+      >
+        <span
+          style={{
+            color: "#f87171",
+            fontSize: 12,
+            letterSpacing: 2,
+            textAlign: "center",
+            maxWidth: "80vw",
+          }}
+        >
+          {error}
+        </span>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button
+            onClick={retry}
+            style={{
+              background: "rgba(0,255,255,0.15)",
+              color: "#00ffff",
+              border: "1px solid #00ffff",
+              padding: "8px 20px",
+              fontFamily: "monospace",
+              fontSize: 11,
+              letterSpacing: 2,
+              cursor: "pointer",
+            }}
+          >
+            RETRY
+          </button>
+          <button
+            onClick={exit}
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              color: "#9ca3af",
+              border: "1px solid rgba(255,255,255,0.15)",
+              padding: "8px 20px",
+              fontFamily: "monospace",
+              fontSize: 11,
+              letterSpacing: 2,
+              cursor: "pointer",
+            }}
+          >
+            BACK
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Entry state: room code input ───────────────────────────────────────
   return (
     <div
       style={{
