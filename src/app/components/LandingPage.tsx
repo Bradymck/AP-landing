@@ -250,10 +250,19 @@ export default function LandingPage() {
                   {/* Content with increased contrast for readability */}
                   <div className="relative z-10">
                     <p className="text-lg text-white text-shadow-glow mb-6 backdrop-blur-sm bg-purple-900/30 p-4 rounded-lg">
-                      Dive into the surreal and satirical world of Aqua Prime, where reality is nothing more than a suggestion 
-                      and every choice ripples across dimensions. Within this universe, the game isn't just a game—it's a reality. 
-                      Aqua Prime is a TTRPG-inspired adventure unfolding inside the AI-driven world of ARI, our beloved 
-                      captain and game master.
+                      They named your world Aqua Prime, back when it had oceans. Now the rivers are memory,
+                      the sand runs to the horizon, and the moon hangs broken in the sky. It shattered
+                      generations ago. It never fell. Its shards drift up there in impossible stillness,
+                      held by something no one has ever named, and pieces of that something lie scattered
+                      across the desert below. Stone that refuses to fall. Stone strong enough to lift a ship.
+                    </p>
+
+                    <p className="text-lg text-white text-shadow-glow mb-6 backdrop-blur-sm bg-purple-900/30 p-4 rounded-lg">
+                      So build one. Somewhere out there are worlds still heavy with rain. Trade for it,
+                      work for it, fight for it, and haul it home. Every drop you bring back turns dead
+                      sand green. And maybe, out there, you will learn what is holding your moon together.
+                      Your guide through all of it is ARI, the AI game master whose world this is, and
+                      who knows more than it lets on.
                     </p>
 
                     {/* Aqua Prime Intro Video */}
